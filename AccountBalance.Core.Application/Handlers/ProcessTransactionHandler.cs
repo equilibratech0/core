@@ -17,6 +17,7 @@ public class ProcessTransactionHandler : IProcessTransactionHandler
     private readonly IMovementRepository _movementRepository;
     private readonly IAccountBalanceRepository _balanceRepository;
     private readonly IProcessedEventRepository _processedEventRepository;
+    private readonly IClientAccountMappingRepository _clientAccountMappingRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<ProcessTransactionHandler> _logger;
 
@@ -29,12 +30,14 @@ public class ProcessTransactionHandler : IProcessTransactionHandler
         IMovementRepository movementRepository,
         IAccountBalanceRepository balanceRepository,
         IProcessedEventRepository processedEventRepository,
+        IClientAccountMappingRepository clientAccountMappingRepository,
         IUnitOfWork unitOfWork,
         ILogger<ProcessTransactionHandler> logger)
     {
         _movementRepository = movementRepository ?? throw new ArgumentNullException(nameof(movementRepository));
         _balanceRepository = balanceRepository ?? throw new ArgumentNullException(nameof(balanceRepository));
         _processedEventRepository = processedEventRepository ?? throw new ArgumentNullException(nameof(processedEventRepository));
+        _clientAccountMappingRepository = clientAccountMappingRepository ?? throw new ArgumentNullException(nameof(clientAccountMappingRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -102,6 +105,9 @@ public class ProcessTransactionHandler : IProcessTransactionHandler
         else
             balance.ApplyDebit(amount.TotalAmount);
 
+        var existingMapping = await _clientAccountMappingRepository
+            .GetByClientIdAsync(command.ClientId, cancellationToken);
+
         await _unitOfWork.BeginAsync(cancellationToken);
         try
         {
@@ -111,6 +117,17 @@ public class ProcessTransactionHandler : IProcessTransactionHandler
                 await _balanceRepository.AddAsync(balance, cancellationToken);
             else
                 await _balanceRepository.UpdateAsync(balance, cancellationToken);
+
+            if (existingMapping is null)
+            {
+                var mapping = new ClientAccountMapping(command.ClientId, command.ClientName, accountId, command.UserIds);
+                await _clientAccountMappingRepository.AddAsync(mapping, cancellationToken);
+            }
+            else
+            {
+                existingMapping.Update(accountId, command.UserIds);
+                await _clientAccountMappingRepository.UpdateAsync(existingMapping, cancellationToken);
+            }
 
             await _processedEventRepository.AddAsync(
                 new ProcessedEvent(command.IdempotencyKey, command.TransactionId), cancellationToken);

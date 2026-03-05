@@ -36,6 +36,7 @@ public class TransactionReceivedConsumer : AzureServiceBusConsumer<TransactionRe
             @event.TransactionId,
             @event.ClientId,
             @event.ClientName,
+            @event.UserIds,
             @event.IdempotencyKey,
             @event.EventType,
             @event.RawPayload);

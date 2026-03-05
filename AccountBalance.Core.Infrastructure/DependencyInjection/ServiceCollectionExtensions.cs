@@ -20,6 +20,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IMovementRepository, MovementRepository>();
         services.AddScoped<IAccountBalanceRepository, AccountBalanceRepository>();
         services.AddScoped<IProcessedEventRepository, ProcessedEventRepository>();
+        services.AddScoped<IClientAccountMappingRepository, ClientAccountMappingRepository>();
         services.AddScoped<IUnitOfWork, MongoUnitOfWork>();
 
         services.Configure<AzureServiceBusOptions>(configuration.GetSection(AzureServiceBusOptions.SectionName));
