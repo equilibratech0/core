@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\AccountBalance.Core.Domain\AccountBalance.Core.Domain.csproj" />
     <ProjectReference Include="..\AccountBalance.Shared\Shared.Domain\Shared.Domain.csproj" />
+    <ProjectReference Include="..\AccountBalance.Shared\Shared.Infrastructure\Shared.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>
