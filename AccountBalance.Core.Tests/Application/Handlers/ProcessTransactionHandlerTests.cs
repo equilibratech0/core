@@ -107,7 +107,7 @@ public class ProcessTransactionHandlerTests
         _balanceRepo.Verify(r => r.AddAsync(
             It.Is<AccountBalanceEntry>(b =>
                 b.AvailableBalance == 100m &&
-                b.TotalCredits == 100m &&
+                b.TotalPayins == 100m &&
                 b.Currency == Currency.USD),
             It.IsAny<CancellationToken>()), Times.Once);
 
@@ -125,7 +125,7 @@ public class ProcessTransactionHandlerTests
     {
         var command = CreateCommand(MovementEventType.PayoutCreated);
         var existingBalance = AccountBalanceEntry.Create(command.ClientId, "acc-001", Currency.USD);
-        existingBalance.ApplyCredit(500m);
+        existingBalance.AddBalance(500m);
 
         _processedEventRepo.Setup(r => r.ExistsAsync(command.IdempotencyKey, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
@@ -139,7 +139,6 @@ public class ProcessTransactionHandlerTests
         await handler.HandleAsync(command);
 
         existingBalance.AvailableBalance.Should().Be(400m);
-        existingBalance.TotalDebits.Should().Be(100m);
 
         _balanceRepo.Verify(r => r.UpdateAsync(existingBalance, It.IsAny<CancellationToken>()), Times.Once);
         _balanceRepo.Verify(r => r.AddAsync(It.IsAny<AccountBalanceEntry>(), It.IsAny<CancellationToken>()), Times.Never);

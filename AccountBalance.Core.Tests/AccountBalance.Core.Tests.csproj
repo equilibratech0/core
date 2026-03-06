@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -11,7 +11,11 @@
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
     <PackageReference Include="FluentAssertions" Version="8.8.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="MongoDB.Driver" Version="3.7.0" />
     <PackageReference Include="Moq" Version="4.20.72" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.3" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.3" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.3" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
   </ItemGroup>
@@ -21,10 +25,15 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="appsettings.Integration.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\AccountBalance.Core.Domain\AccountBalance.Core.Domain.csproj" />
     <ProjectReference Include="..\AccountBalance.Core.Application\AccountBalance.Core.Application.csproj" />
     <ProjectReference Include="..\AccountBalance.Shared\Shared.Domain\Shared.Domain.csproj" />
     <ProjectReference Include="..\AccountBalance.Shared\Shared.Infrastructure\Shared.Infrastructure.csproj" />
+    <ProjectReference Include="..\AccountBalance.Core.Infrastructure\AccountBalance.Core.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

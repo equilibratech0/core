@@ -102,9 +102,9 @@ public class ProcessTransactionHandler : IProcessTransactionHandler
         balance ??= AccountBalanceEntry.Create(command.ClientId, accountId, amount.Currency);
 
         if (direction == MovementDirection.PayIn)
-            balance.ApplyCredit(amount.TotalAmount);
+            balance.AddBalance(amount.TotalAmount);
         else
-            balance.ApplyDebit(amount.TotalAmount);
+            balance.SubtractBalance(amount.TotalAmount);
 
         var existingMapping = await _clientAccountMappingRepository
             .GetByClientIdAsync(command.ClientId, cancellationToken);

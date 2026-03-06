@@ -20,8 +20,8 @@ public class AccountBalanceEntryTests
         entry.AccountId.Should().Be(accountId);
         entry.Currency.Should().Be(currency);
         entry.AvailableBalance.Should().Be(0m);
-        entry.TotalCredits.Should().Be(0m);
-        entry.TotalDebits.Should().Be(0m);
+        entry.TotalPayins.Should().Be(0m);
+        entry.TotalPayouts.Should().Be(0m);
         entry.LastMovementAt.Should().BeNull();
         entry.CreatedAt.Should().BeCloseTo(DateTimeOffset.UtcNow, TimeSpan.FromSeconds(2));
         entry.UpdatedAt.Should().BeCloseTo(DateTimeOffset.UtcNow, TimeSpan.FromSeconds(2));
@@ -49,15 +49,15 @@ public class AccountBalanceEntryTests
     }
 
     [Fact]
-    public void ApplyCredit_WithPositiveAmount_ShouldIncreaseBalanceAndTotalCredits()
+    public void AddBalance_WithPositiveAmount_ShouldIncreaseBalanceAndPayin()
     {
         var entry = AccountBalanceEntry.Create(Guid.NewGuid(), "ACC-001", Currency.USD);
 
-        entry.ApplyCredit(100.50m);
+        entry.AddBalance(100.50m);
 
         entry.AvailableBalance.Should().Be(100.50m);
-        entry.TotalCredits.Should().Be(100.50m);
-        entry.TotalDebits.Should().Be(0m);
+        entry.TotalPayins.Should().Be(100.50m);
+        entry.TotalPayouts.Should().Be(0m);
         entry.LastMovementAt.Should().NotBeNull();
         entry.UpdatedAt.Should().BeCloseTo(DateTimeOffset.UtcNow, TimeSpan.FromSeconds(2));
     }
@@ -67,12 +67,12 @@ public class AccountBalanceEntryTests
     {
         var entry = AccountBalanceEntry.Create(Guid.NewGuid(), "ACC-001", Currency.MXN);
 
-        entry.ApplyCredit(100m);
-        entry.ApplyCredit(250.75m);
-        entry.ApplyCredit(49.25m);
+        entry.AddBalance(100m);
+        entry.AddBalance(250.75m);
+        entry.AddBalance(49.25m);
 
         entry.AvailableBalance.Should().Be(400m);
-        entry.TotalCredits.Should().Be(400m);
+        entry.TotalPayins.Should().Be(400m);
     }
 
     [Theory]
@@ -83,23 +83,23 @@ public class AccountBalanceEntryTests
     {
         var entry = AccountBalanceEntry.Create(Guid.NewGuid(), "ACC-001", Currency.USD);
 
-        var act = () => entry.ApplyCredit(amount);
+        var act = () => entry.AddBalance(amount);
 
         act.Should().Throw<DomainException>()
             .WithMessage("*Credit amount must be positive*");
     }
 
     [Fact]
-    public void ApplyDebit_WithPositiveAmount_ShouldDecreaseBalanceAndIncreaseTotalDebits()
+    public void SubtractBalance_WithPositiveAmount_ShouldDecreaseBalanceAndIncreasePayout()
     {
         var entry = AccountBalanceEntry.Create(Guid.NewGuid(), "ACC-001", Currency.EUR);
-        entry.ApplyCredit(500m);
+        entry.AddBalance(500m);
 
-        entry.ApplyDebit(200m);
+        entry.SubtractBalance(200m);
 
         entry.AvailableBalance.Should().Be(300m);
-        entry.TotalDebits.Should().Be(200m);
-        entry.TotalCredits.Should().Be(500m);
+        entry.TotalPayouts.Should().Be(200m);
+        entry.TotalPayins.Should().Be(500m);
     }
 
     [Fact]
@@ -107,10 +107,10 @@ public class AccountBalanceEntryTests
     {
         var entry = AccountBalanceEntry.Create(Guid.NewGuid(), "ACC-001", Currency.USD);
 
-        entry.ApplyDebit(100m);
+        entry.SubtractBalance(100m);
 
         entry.AvailableBalance.Should().Be(-100m);
-        entry.TotalDebits.Should().Be(100m);
+        entry.TotalPayouts.Should().Be(100m);
     }
 
     [Theory]
@@ -121,7 +121,7 @@ public class AccountBalanceEntryTests
     {
         var entry = AccountBalanceEntry.Create(Guid.NewGuid(), "ACC-001", Currency.USD);
 
-        var act = () => entry.ApplyDebit(amount);
+        var act = () => entry.SubtractBalance(amount);
 
         act.Should().Throw<DomainException>()
             .WithMessage("*Debit amount must be positive*");
@@ -132,35 +132,35 @@ public class AccountBalanceEntryTests
     {
         var entry = AccountBalanceEntry.Create(Guid.NewGuid(), "ACC-001", Currency.BRL);
 
-        entry.ApplyCredit(1000m);
-        entry.ApplyDebit(350m);
-        entry.ApplyCredit(200m);
-        entry.ApplyDebit(100m);
+        entry.AddBalance(1000m);
+        entry.SubtractBalance(350m);
+        entry.AddBalance(200m);
+        entry.SubtractBalance(100m);
 
         entry.AvailableBalance.Should().Be(750m);
-        entry.TotalCredits.Should().Be(1200m);
-        entry.TotalDebits.Should().Be(450m);
+        entry.TotalPayins.Should().Be(1200m);
+        entry.TotalPayouts.Should().Be(450m);
     }
 
     [Fact]
-    public void ApplyCredit_ShouldUpdateLastMovementAt()
+    public void AddBalance_ShouldUpdateLastMovementAt()
     {
         var entry = AccountBalanceEntry.Create(Guid.NewGuid(), "ACC-001", Currency.USD);
         entry.LastMovementAt.Should().BeNull();
 
-        entry.ApplyCredit(10m);
+        entry.AddBalance(10m);
 
         entry.LastMovementAt.Should().NotBeNull();
         entry.LastMovementAt.Should().BeCloseTo(DateTimeOffset.UtcNow, TimeSpan.FromSeconds(2));
     }
 
     [Fact]
-    public void ApplyDebit_ShouldUpdateLastMovementAt()
+    public void SubtractBalance_ShouldUpdateLastMovementAt()
     {
         var entry = AccountBalanceEntry.Create(Guid.NewGuid(), "ACC-001", Currency.USD);
         entry.LastMovementAt.Should().BeNull();
 
-        entry.ApplyDebit(10m);
+        entry.SubtractBalance(10m);
 
         entry.LastMovementAt.Should().NotBeNull();
         entry.LastMovementAt.Should().BeCloseTo(DateTimeOffset.UtcNow, TimeSpan.FromSeconds(2));
