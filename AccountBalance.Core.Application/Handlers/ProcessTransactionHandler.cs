@@ -57,9 +57,12 @@ public class ProcessTransactionHandler : IProcessTransactionHandler
 
         var payload = DeserializePayload(command.RawPayload);
 
+        var currency = payload.Account?.Currency
+            ?? throw new InvalidOperationException("Account currency is required.");
+
         var amount = new Amount(
             payload.Amount.TotalAmount,
-            payload.Amount.Currency,
+            currency,
             payload.Amount.GrossAmount,
             payload.Amount.NetAmount,
             payload.Amount.PaymentFee,
@@ -81,19 +84,19 @@ public class ProcessTransactionHandler : IProcessTransactionHandler
                     : null)
             : null;
 
+        var accountId = payload.Account?.AccountId ?? command.ClientId.ToString();
+
         var movement = Movement.Create(
             command.EventType,
             amount,
             payload.TransactionId,
-            payload.AccountId,
+            accountId,
             payload.Country,
             paymentMethod,
             merchant,
             payload.Description);
 
         var direction = MovementClassifier.Classify(command.EventType);
-
-        var accountId = payload.AccountId ?? command.ClientId.ToString();
 
         var balance = await _balanceRepository.GetByAccountAndCurrencyAsync(
             command.ClientId, accountId, amount.Currency, cancellationToken);

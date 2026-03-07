@@ -62,14 +62,13 @@ public class ProcessTransactionIntegrationTests
             Amount = new AmountPayload
             {
                 TotalAmount = totalAmount,
-                Currency = currency,
                 GrossAmount = totalAmount,
                 NetAmount = totalAmount - 2m,
                 PaymentFee = 1m,
                 PlatformFee = 1m
             },
             TransactionId = transactionId,
-            AccountId = accountId,
+            Account = new AccountPayload { AccountId = accountId, Currency = currency },
             Country = "US",
             Description = "Integration test",
             PaymentMethod = paymentMethod,

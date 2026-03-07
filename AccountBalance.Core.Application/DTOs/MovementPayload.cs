@@ -6,7 +6,7 @@ public class MovementPayload
 {
     public AmountPayload Amount { get; set; } = null!;
     public string TransactionId { get; set; } = null!;
-    public string? AccountId { get; set; }
+    public AccountPayload? Account { get; set; }
     public string? Country { get; set; }
     public PaymentMethodPayload? PaymentMethod { get; set; }
     public MerchantPayload? Merchant { get; set; }
@@ -16,11 +16,17 @@ public class MovementPayload
 public class AmountPayload
 {
     public decimal TotalAmount { get; set; }
-    public Currency Currency { get; set; }
     public decimal? GrossAmount { get; set; }
     public decimal? NetAmount { get; set; }
     public decimal? PaymentFee { get; set; }
     public decimal? PlatformFee { get; set; }
+}
+
+public class AccountPayload
+{
+    public string? AccountId { get; set; }
+    public string? AccountName { get; set; }
+    public Currency? Currency { get; set; }
 }
 
 public class PaymentMethodPayload

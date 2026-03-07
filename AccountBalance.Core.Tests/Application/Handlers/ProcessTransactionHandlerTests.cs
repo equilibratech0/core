@@ -42,14 +42,13 @@ public class ProcessTransactionHandlerTests
             Amount = new AmountPayload
             {
                 TotalAmount = totalAmount,
-                Currency = currency,
                 GrossAmount = totalAmount,
                 NetAmount = totalAmount - 2m,
                 PaymentFee = 1m,
                 PlatformFee = 1m
             },
             TransactionId = transactionId,
-            AccountId = accountId,
+            Account = new AccountPayload { AccountId = accountId, Currency = currency },
             Country = country,
             Description = description
         });
@@ -314,14 +313,13 @@ public class ProcessTransactionHandlerTests
             Amount = new AmountPayload
             {
                 TotalAmount = 250m,
-                Currency = Currency.EUR,
                 GrossAmount = 260m,
                 NetAmount = 245m,
                 PaymentFee = 10m,
                 PlatformFee = 5m
             },
             TransactionId = "txn-full",
-            AccountId = "acc-full",
+            Account = new AccountPayload { AccountId = "acc-full", Currency = Currency.EUR },
             Country = "ES",
             Description = "Full payment",
             PaymentMethod = new PaymentMethodPayload
