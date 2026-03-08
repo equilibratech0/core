@@ -41,7 +41,13 @@ public class ProcessTransactionIntegrationTests
         var movementRepo = new MovementRepository(dbContext, NullLogger<MovementRepository>.Instance);
         var balanceRepo = new AccountBalanceRepository(dbContext, NullLogger<AccountBalanceRepository>.Instance);
         var processedEventRepo = new ProcessedEventRepository(dbContext, NullLogger<ProcessedEventRepository>.Instance);
-        var mappingRepo = new CompanyAccountMappingRepository(dbContext, NullLogger<CompanyAccountMappingRepository>.Instance);
+        var configOptions = Options.Create(new MongoDbConfigOptions
+        {
+            ConnectionString = _fixture.ConnectionString,
+            DatabaseName = databaseName
+        });
+        var configContext = new MongoDbConfigContext(configOptions, NullLogger<MongoDbConfigContext>.Instance);
+        var mappingRepo = new CompanyAccountMappingRepository(configContext, NullLogger<CompanyAccountMappingRepository>.Instance);
 
         var handler = new ProcessTransactionHandler(
             movementRepo, balanceRepo, processedEventRepo,
@@ -184,7 +190,7 @@ public class ProcessTransactionIntegrationTests
     #region Idempotency
 
     [Fact]
-    public async Task DuplicateTransactionId_ShouldNotDuplicateData()
+    public async Task DuplicateTransactionIdAndEventType_ShouldNotDuplicateData()
     {
         var dbName = $"test_{Guid.NewGuid():N}";
         var (handler, dbContext) = CreateHandler(dbName);
@@ -196,7 +202,7 @@ public class ProcessTransactionIntegrationTests
 
         var balances = dbContext.GetCollection<AccountBalanceEntry>("account_balances");
         var balance = await balances.Find(b => b.CompanyId == companyId).SingleAsync();
-        balance.AvailableBalance.Should().Be(500m, "second call with same TransactionId should be ignored");
+        balance.AvailableBalance.Should().Be(500m, "second call with same TransactionId+EventType should be ignored");
 
         var events = dbContext.GetCollection<ProcessedEvent>("processed_events");
         var eventCount = await events.CountDocumentsAsync(
@@ -206,6 +212,39 @@ public class ProcessTransactionIntegrationTests
         var movements = dbContext.GetCollection<Movement>("movements");
         var movementCount = await movements.CountDocumentsAsync(FilterDefinition<Movement>.Empty);
         movementCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task SameTransactionId_DifferentEventType_ShouldProcessBoth()
+    {
+        var dbName = $"test_{Guid.NewGuid():N}";
+        var (handler, dbContext) = CreateHandler(dbName);
+        var companyId = Guid.NewGuid();
+        var transactionId = Guid.NewGuid();
+
+        var payInCommand = new ProcessTransactionCommand(
+            TransactionId: transactionId,
+            CompanyId: companyId,
+            EventType: MovementEventType.TransactionCreated,
+            RawPayload: BuildPayload(500m, Currency.USD, Guid.NewGuid().ToString()));
+
+        var chargebackCommand = new ProcessTransactionCommand(
+            TransactionId: transactionId,
+            CompanyId: companyId,
+            EventType: MovementEventType.ChargebackOpen,
+            RawPayload: BuildPayload(500m, Currency.USD, Guid.NewGuid().ToString()));
+
+        await handler.HandleAsync(payInCommand);
+        await handler.HandleAsync(chargebackCommand);
+
+        var events = dbContext.GetCollection<ProcessedEvent>("processed_events");
+        var eventCount = await events.CountDocumentsAsync(
+            Builders<ProcessedEvent>.Filter.Eq(e => e.TransactionId, transactionId));
+        eventCount.Should().Be(2, "same TransactionId with different EventType should both be processed");
+
+        var movements = dbContext.GetCollection<Movement>("movements");
+        var movementCount = await movements.CountDocumentsAsync(FilterDefinition<Movement>.Empty);
+        movementCount.Should().Be(2);
     }
 
     #endregion

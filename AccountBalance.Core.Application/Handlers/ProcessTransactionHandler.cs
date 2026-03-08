@@ -49,9 +49,10 @@ public class ProcessTransactionHandler : IProcessTransactionHandler
             "Processing transaction {TransactionId}, CompanyId={CompanyId}, EventType={EventType}",
             command.TransactionId, command.CompanyId, command.EventType);
 
-        if (await _processedEventRepository.ExistsAsync(command.TransactionId, cancellationToken))
+        if (await _processedEventRepository.ExistsAsync(command.TransactionId, command.EventType, cancellationToken))
         {
-            _logger.LogWarning("Duplicate event skipped. TransactionId: {TransactionId}", command.TransactionId);
+            _logger.LogWarning("Duplicate event skipped. TransactionId: {TransactionId}, EventType: {EventType}",
+                command.TransactionId, command.EventType);
             return;
         }
 
@@ -107,8 +108,6 @@ public class ProcessTransactionHandler : IProcessTransactionHandler
         else
             balance.SubtractBalance(amount.TotalAmount);
 
-        var mapping = new CompanyAccountMapping(command.CompanyId, accountId);
-
         await _dbContext.BeginTransactionAsync(cancellationToken);
         try
         {
@@ -116,10 +115,8 @@ public class ProcessTransactionHandler : IProcessTransactionHandler
 
             await _balanceRepository.UpsertAsync(balance, cancellationToken);
 
-            await _companyAccountMappingRepository.UpsertAsync(mapping, cancellationToken);
-
             await _processedEventRepository.AddAsync(
-                new ProcessedEvent(command.TransactionId), cancellationToken);
+                new ProcessedEvent(command.TransactionId, command.EventType), cancellationToken);
 
             await _dbContext.CommitTransactionAsync(cancellationToken);
 
@@ -132,6 +129,9 @@ public class ProcessTransactionHandler : IProcessTransactionHandler
             await _dbContext.AbortTransactionAsync(cancellationToken);
             throw;
         }
+
+        await _companyAccountMappingRepository.UpsertAsync(
+            new CompanyAccountMapping(command.CompanyId, accountId), cancellationToken);
     }
 
     private static MovementPayload DeserializePayload(string rawPayload)

@@ -14,12 +14,13 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddCoreInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddMongoInfrastructure(configuration);
+        services.AddMongoConfigInfrastructure(configuration);
         services.AddAzureServiceBusInfrastructure(configuration);
 
         services.AddScoped<IMovementRepository, MovementRepository>();
         services.AddScoped<IAccountBalanceRepository, AccountBalanceRepository>();
         services.AddScoped<IProcessedEventRepository, ProcessedEventRepository>();
-        services.AddScoped<ICompanyAccountMappingRepository, CompanyAccountMappingRepository>();
+        services.AddSingleton<ICompanyAccountMappingRepository, CompanyAccountMappingRepository>();
 
         return services;
     }
