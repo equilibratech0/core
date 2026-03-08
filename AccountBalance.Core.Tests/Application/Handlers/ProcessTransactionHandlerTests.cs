@@ -18,7 +18,7 @@ public class ProcessTransactionHandlerTests
     private readonly Mock<IMovementRepository> _movementRepo = new();
     private readonly Mock<IAccountBalanceRepository> _balanceRepo = new();
     private readonly Mock<IProcessedEventRepository> _processedEventRepo = new();
-    private readonly Mock<IClientAccountMappingRepository> _mappingRepo = new();
+    private readonly Mock<ICompanyAccountMappingRepository> _mappingRepo = new();
     private readonly Mock<IMongoDbContext> _dbContext = new();
     private readonly Mock<ILogger<ProcessTransactionHandler>> _logger = new();
 
@@ -34,7 +34,7 @@ public class ProcessTransactionHandlerTests
         decimal totalAmount = 100m,
         Currency currency = Currency.USD,
         string transactionId = "txn-001",
-        string? accountId = "acc-001",
+        string accountId = "acc-001",
         string? country = "US",
         string? description = "Test payment") =>
         JsonSerializer.Serialize(new MovementPayload
@@ -44,8 +44,7 @@ public class ProcessTransactionHandlerTests
                 TotalAmount = totalAmount,
                 GrossAmount = totalAmount,
                 NetAmount = totalAmount - 2m,
-                PaymentFee = 1m,
-                PlatformFee = 1m
+                PaymentFee = 1m
             },
             TransactionId = transactionId,
             Account = new AccountPayload { AccountId = accountId, Currency = currency },
@@ -55,14 +54,10 @@ public class ProcessTransactionHandlerTests
 
     private static ProcessTransactionCommand CreateCommand(
         MovementEventType eventType = MovementEventType.TransactionCreated,
-        string? rawPayload = null,
-        string idempotencyKey = "idem-key-001") =>
+        string? rawPayload = null) =>
         new(
             TransactionId: Guid.NewGuid(),
-            ClientId: Guid.NewGuid(),
-            ClientName: "TestClient",
-            UserIds: new List<string> { "user-1" },
-            IdempotencyKey: idempotencyKey,
+            CompanyId: Guid.NewGuid(),
             EventType: eventType,
             RawPayload: rawPayload ?? BuildRawPayload());
 
@@ -72,14 +67,14 @@ public class ProcessTransactionHandlerTests
     public async Task HandleAsync_DuplicateEvent_ShouldSkipProcessing()
     {
         var command = CreateCommand();
-        _processedEventRepo.Setup(r => r.ExistsAsync(command.IdempotencyKey, It.IsAny<CancellationToken>()))
+        _processedEventRepo.Setup(r => r.ExistsAsync(command.TransactionId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
         var handler = CreateHandler();
         await handler.HandleAsync(command);
 
         _movementRepo.Verify(r => r.AddAsync(It.IsAny<global::Shared.Domain.Entities.Movement>(), It.IsAny<CancellationToken>()), Times.Never);
-        _balanceRepo.Verify(r => r.AddAsync(It.IsAny<AccountBalanceEntry>(), It.IsAny<CancellationToken>()), Times.Never);
+        _balanceRepo.Verify(r => r.UpsertAsync(It.IsAny<AccountBalanceEntry>(), It.IsAny<CancellationToken>()), Times.Never);
         _dbContext.Verify(c => c.BeginTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -92,18 +87,16 @@ public class ProcessTransactionHandlerTests
     {
         var command = CreateCommand(MovementEventType.TransactionCreated);
 
-        _processedEventRepo.Setup(r => r.ExistsAsync(command.IdempotencyKey, It.IsAny<CancellationToken>()))
+        _processedEventRepo.Setup(r => r.ExistsAsync(command.TransactionId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
-        _balanceRepo.Setup(r => r.GetByAccountAndCurrencyAsync(
-                command.ClientId, "acc-001", Currency.USD, It.IsAny<CancellationToken>()))
+        _balanceRepo.Setup(r => r.GetByAccountAsync(
+                command.CompanyId, "acc-001", It.IsAny<CancellationToken>()))
             .ReturnsAsync((AccountBalanceEntry?)null);
-        _mappingRepo.Setup(r => r.GetByClientIdAsync(command.ClientId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((ClientAccountMapping?)null);
 
         var handler = CreateHandler();
         await handler.HandleAsync(command);
 
-        _balanceRepo.Verify(r => r.AddAsync(
+        _balanceRepo.Verify(r => r.UpsertAsync(
             It.Is<AccountBalanceEntry>(b =>
                 b.AvailableBalance == 100m &&
                 b.TotalPayins == 100m &&
@@ -111,6 +104,7 @@ public class ProcessTransactionHandlerTests
             It.IsAny<CancellationToken>()), Times.Once);
 
         _movementRepo.Verify(r => r.AddAsync(It.IsAny<global::Shared.Domain.Entities.Movement>(), It.IsAny<CancellationToken>()), Times.Once);
+        _mappingRepo.Verify(r => r.UpsertAsync(It.Is<CompanyAccountMapping>(m => m.CompanyId == command.CompanyId && m.AccountId == "acc-001"), It.IsAny<CancellationToken>()), Times.Once);
         _processedEventRepo.Verify(r => r.AddAsync(It.IsAny<ProcessedEvent>(), It.IsAny<CancellationToken>()), Times.Once);
         _dbContext.Verify(c => c.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -123,98 +117,46 @@ public class ProcessTransactionHandlerTests
     public async Task HandleAsync_PayOutWithExistingBalance_ShouldUpdateBalanceWithDebit()
     {
         var command = CreateCommand(MovementEventType.PayoutCreated);
-        var existingBalance = AccountBalanceEntry.Create(command.ClientId, "acc-001", Currency.USD);
+        var existingBalance = AccountBalanceEntry.Create(command.CompanyId, "acc-001", Currency.USD);
         existingBalance.AddBalance(500m);
 
-        _processedEventRepo.Setup(r => r.ExistsAsync(command.IdempotencyKey, It.IsAny<CancellationToken>()))
+        _processedEventRepo.Setup(r => r.ExistsAsync(command.TransactionId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
-        _balanceRepo.Setup(r => r.GetByAccountAndCurrencyAsync(
-                command.ClientId, "acc-001", Currency.USD, It.IsAny<CancellationToken>()))
+        _balanceRepo.Setup(r => r.GetByAccountAsync(
+                command.CompanyId, "acc-001", It.IsAny<CancellationToken>()))
             .ReturnsAsync(existingBalance);
-        _mappingRepo.Setup(r => r.GetByClientIdAsync(command.ClientId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ClientAccountMapping(command.ClientId, "TestClient", "acc-001", new List<string>()));
 
         var handler = CreateHandler();
         await handler.HandleAsync(command);
 
         existingBalance.AvailableBalance.Should().Be(400m);
 
-        _balanceRepo.Verify(r => r.UpdateAsync(existingBalance, It.IsAny<CancellationToken>()), Times.Once);
-        _balanceRepo.Verify(r => r.AddAsync(It.IsAny<AccountBalanceEntry>(), It.IsAny<CancellationToken>()), Times.Never);
+        _balanceRepo.Verify(r => r.UpsertAsync(existingBalance, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     #endregion
 
-    #region Client Account Mapping
+    #region Company Account Mapping Upsert
 
     [Fact]
-    public async Task HandleAsync_NewClient_ShouldCreateMapping()
+    public async Task HandleAsync_ShouldAlwaysUpsertCompanyAccountMapping()
     {
         var command = CreateCommand();
 
-        _processedEventRepo.Setup(r => r.ExistsAsync(command.IdempotencyKey, It.IsAny<CancellationToken>()))
+        _processedEventRepo.Setup(r => r.ExistsAsync(command.TransactionId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
-        _balanceRepo.Setup(r => r.GetByAccountAndCurrencyAsync(
-                command.ClientId, "acc-001", Currency.USD, It.IsAny<CancellationToken>()))
+        _balanceRepo.Setup(r => r.GetByAccountAsync(
+                command.CompanyId, "acc-001", It.IsAny<CancellationToken>()))
             .ReturnsAsync((AccountBalanceEntry?)null);
-        _mappingRepo.Setup(r => r.GetByClientIdAsync(command.ClientId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((ClientAccountMapping?)null);
 
         var handler = CreateHandler();
         await handler.HandleAsync(command);
 
-        _mappingRepo.Verify(r => r.AddAsync(
-            It.Is<ClientAccountMapping>(m =>
-                m.ClientId == command.ClientId &&
-                m.ClientName == "TestClient"),
+        _mappingRepo.Verify(r => r.UpsertAsync(
+            It.Is<CompanyAccountMapping>(m =>
+                m.CompanyId == command.CompanyId &&
+                m.AccountId == "acc-001"),
             It.IsAny<CancellationToken>()), Times.Once);
-    }
-
-    [Fact]
-    public async Task HandleAsync_ExistingClient_ShouldUpdateMapping()
-    {
-        var command = CreateCommand();
-        var existingMapping = new ClientAccountMapping(command.ClientId, "TestClient", "old-acc", new List<string>());
-
-        _processedEventRepo.Setup(r => r.ExistsAsync(command.IdempotencyKey, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
-        _balanceRepo.Setup(r => r.GetByAccountAndCurrencyAsync(
-                command.ClientId, "acc-001", Currency.USD, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((AccountBalanceEntry?)null);
-        _mappingRepo.Setup(r => r.GetByClientIdAsync(command.ClientId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(existingMapping);
-
-        var handler = CreateHandler();
-        await handler.HandleAsync(command);
-
-        _mappingRepo.Verify(r => r.UpdateAsync(existingMapping, It.IsAny<CancellationToken>()), Times.Once);
-        _mappingRepo.Verify(r => r.AddAsync(It.IsAny<ClientAccountMapping>(), It.IsAny<CancellationToken>()), Times.Never);
-        existingMapping.AccountId.Should().Be("acc-001");
-    }
-
-    #endregion
-
-    #region AccountId fallback
-
-    [Fact]
-    public async Task HandleAsync_WhenAccountIdIsNull_ShouldFallbackToClientId()
-    {
-        var rawPayload = BuildRawPayload(accountId: null);
-        var command = CreateCommand(rawPayload: rawPayload);
-
-        _processedEventRepo.Setup(r => r.ExistsAsync(command.IdempotencyKey, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
-        _balanceRepo.Setup(r => r.GetByAccountAndCurrencyAsync(
-                command.ClientId, command.ClientId.ToString(), Currency.USD, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((AccountBalanceEntry?)null);
-        _mappingRepo.Setup(r => r.GetByClientIdAsync(command.ClientId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((ClientAccountMapping?)null);
-
-        var handler = CreateHandler();
-        await handler.HandleAsync(command);
-
-        _balanceRepo.Verify(r => r.GetByAccountAndCurrencyAsync(
-            command.ClientId, command.ClientId.ToString(), Currency.USD, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     #endregion
@@ -226,7 +168,7 @@ public class ProcessTransactionHandlerTests
     {
         var command = CreateCommand(rawPayload: "not-valid-json");
 
-        _processedEventRepo.Setup(r => r.ExistsAsync(command.IdempotencyKey, It.IsAny<CancellationToken>()))
+        _processedEventRepo.Setup(r => r.ExistsAsync(command.TransactionId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
         var handler = CreateHandler();
@@ -242,7 +184,7 @@ public class ProcessTransactionHandlerTests
         var payload = JsonSerializer.Serialize(new { TransactionId = "txn-001" });
         var command = CreateCommand(rawPayload: payload);
 
-        _processedEventRepo.Setup(r => r.ExistsAsync(command.IdempotencyKey, It.IsAny<CancellationToken>()))
+        _processedEventRepo.Setup(r => r.ExistsAsync(command.TransactionId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
         var handler = CreateHandler();
@@ -262,7 +204,7 @@ public class ProcessTransactionHandlerTests
         });
         var command = CreateCommand(rawPayload: payload);
 
-        _processedEventRepo.Setup(r => r.ExistsAsync(command.IdempotencyKey, It.IsAny<CancellationToken>()))
+        _processedEventRepo.Setup(r => r.ExistsAsync(command.TransactionId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
         var handler = CreateHandler();
@@ -282,13 +224,11 @@ public class ProcessTransactionHandlerTests
     {
         var command = CreateCommand();
 
-        _processedEventRepo.Setup(r => r.ExistsAsync(command.IdempotencyKey, It.IsAny<CancellationToken>()))
+        _processedEventRepo.Setup(r => r.ExistsAsync(command.TransactionId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
-        _balanceRepo.Setup(r => r.GetByAccountAndCurrencyAsync(
-                command.ClientId, "acc-001", Currency.USD, It.IsAny<CancellationToken>()))
+        _balanceRepo.Setup(r => r.GetByAccountAsync(
+                command.CompanyId, "acc-001", It.IsAny<CancellationToken>()))
             .ReturnsAsync((AccountBalanceEntry?)null);
-        _mappingRepo.Setup(r => r.GetByClientIdAsync(command.ClientId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((ClientAccountMapping?)null);
         _movementRepo.Setup(r => r.AddAsync(It.IsAny<global::Shared.Domain.Entities.Movement>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("DB failure"));
 
@@ -315,8 +255,7 @@ public class ProcessTransactionHandlerTests
                 TotalAmount = 250m,
                 GrossAmount = 260m,
                 NetAmount = 245m,
-                PaymentFee = 10m,
-                PlatformFee = 5m
+                PaymentFee = 10m
             },
             TransactionId = "txn-full",
             Account = new AccountPayload { AccountId = "acc-full", Currency = Currency.EUR },
@@ -342,18 +281,16 @@ public class ProcessTransactionHandlerTests
 
         var command = CreateCommand(MovementEventType.TransactionApproved, rawPayload);
 
-        _processedEventRepo.Setup(r => r.ExistsAsync(command.IdempotencyKey, It.IsAny<CancellationToken>()))
+        _processedEventRepo.Setup(r => r.ExistsAsync(command.TransactionId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
-        _balanceRepo.Setup(r => r.GetByAccountAndCurrencyAsync(
-                command.ClientId, "acc-full", Currency.EUR, It.IsAny<CancellationToken>()))
+        _balanceRepo.Setup(r => r.GetByAccountAsync(
+                command.CompanyId, "acc-full", It.IsAny<CancellationToken>()))
             .ReturnsAsync((AccountBalanceEntry?)null);
-        _mappingRepo.Setup(r => r.GetByClientIdAsync(command.ClientId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((ClientAccountMapping?)null);
 
         var handler = CreateHandler();
         await handler.HandleAsync(command);
 
-        _balanceRepo.Verify(r => r.AddAsync(
+        _balanceRepo.Verify(r => r.UpsertAsync(
             It.Is<AccountBalanceEntry>(b =>
                 b.AvailableBalance == 250m &&
                 b.Currency == Currency.EUR),
@@ -397,13 +334,13 @@ public class ProcessTransactionHandlerTests
     }
 
     [Fact]
-    public void Constructor_NullClientAccountMappingRepository_ShouldThrow()
+    public void Constructor_NullCompanyAccountMappingRepository_ShouldThrow()
     {
         var act = () => new ProcessTransactionHandler(
             _movementRepo.Object, _balanceRepo.Object, _processedEventRepo.Object,
             null!, _dbContext.Object, _logger.Object);
 
-        act.Should().Throw<ArgumentNullException>().WithParameterName("clientAccountMappingRepository");
+        act.Should().Throw<ArgumentNullException>().WithParameterName("companyAccountMappingRepository");
     }
 
     [Fact]
@@ -436,13 +373,11 @@ public class ProcessTransactionHandlerTests
         var callOrder = new List<string>();
         var command = CreateCommand();
 
-        _processedEventRepo.Setup(r => r.ExistsAsync(command.IdempotencyKey, It.IsAny<CancellationToken>()))
+        _processedEventRepo.Setup(r => r.ExistsAsync(command.TransactionId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
-        _balanceRepo.Setup(r => r.GetByAccountAndCurrencyAsync(
-                command.ClientId, "acc-001", Currency.USD, It.IsAny<CancellationToken>()))
+        _balanceRepo.Setup(r => r.GetByAccountAsync(
+                command.CompanyId, "acc-001", It.IsAny<CancellationToken>()))
             .ReturnsAsync((AccountBalanceEntry?)null);
-        _mappingRepo.Setup(r => r.GetByClientIdAsync(command.ClientId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((ClientAccountMapping?)null);
 
         _dbContext.Setup(c => c.BeginTransactionAsync(It.IsAny<CancellationToken>()))
             .Callback(() => callOrder.Add("BeginTransaction"));

@@ -10,13 +10,13 @@ public class AccountBalanceEntryTests
     [Fact]
     public void Create_WithValidParameters_ShouldInitializeCorrectly()
     {
-        var clientId = Guid.NewGuid();
+        var companyId = Guid.NewGuid();
         var accountId = "ACC-001";
         var currency = Currency.USD;
 
-        var entry = AccountBalanceEntry.Create(clientId, accountId, currency);
+        var entry = AccountBalanceEntry.Create(companyId, accountId, currency);
 
-        entry.ClientId.Should().Be(clientId);
+        entry.CompanyId.Should().Be(companyId);
         entry.AccountId.Should().Be(accountId);
         entry.Currency.Should().Be(currency);
         entry.AvailableBalance.Should().Be(0m);

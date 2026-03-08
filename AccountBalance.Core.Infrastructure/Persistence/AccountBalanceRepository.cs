@@ -2,11 +2,9 @@ namespace AccountBalance.Core.Infrastructure.Persistence;
 
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
-using Shared.Domain.Enums;
 using Shared.Infrastructure.Persistence.Abstractions;
 using AccountBalance.Core.Domain.Aggregates;
 using AccountBalance.Core.Domain.Repositories;
-using AccountBalance.Core.Domain.ValueObjects;
 
 public class AccountBalanceRepository : IAccountBalanceRepository
 {
@@ -23,13 +21,12 @@ public class AccountBalanceRepository : IAccountBalanceRepository
         _logger = logger;
     }
 
-    public async Task<AccountBalanceEntry?> GetByAccountAndCurrencyAsync(
-        Guid clientId, string accountId, Currency currency, CancellationToken cancellationToken = default)
+    public async Task<AccountBalanceEntry?> GetByAccountAsync(
+        Guid companyId, string accountId, CancellationToken cancellationToken = default)
     {
         var filter = Builders<AccountBalanceEntry>.Filter.And(
-            Builders<AccountBalanceEntry>.Filter.Eq(b => b.ClientId, clientId),
-            Builders<AccountBalanceEntry>.Filter.Eq(b => b.AccountId, accountId),
-            Builders<AccountBalanceEntry>.Filter.Eq(b => b.Currency, currency));
+            Builders<AccountBalanceEntry>.Filter.Eq(b => b.CompanyId, companyId),
+            Builders<AccountBalanceEntry>.Filter.Eq(b => b.AccountId, accountId));
 
         if (_dbContext.Session is not null)
             return await _collection.Find(_dbContext.Session, filter).SingleOrDefaultAsync(cancellationToken);
@@ -37,27 +34,20 @@ public class AccountBalanceRepository : IAccountBalanceRepository
         return await _collection.Find(filter).SingleOrDefaultAsync(cancellationToken);
     }
 
-    public async Task AddAsync(AccountBalanceEntry entry, CancellationToken cancellationToken = default)
+    public async Task UpsertAsync(AccountBalanceEntry entry, CancellationToken cancellationToken = default)
     {
-        _logger.LogDebug("Creating AccountBalance for Client {ClientId}, Account {AccountId}, Currency {Currency}",
-            entry.ClientId, entry.AccountId, entry.Currency);
+        _logger.LogDebug("Upserting AccountBalance for Company {CompanyId}, Account {AccountId}, Balance={Balance}",
+            entry.CompanyId, entry.AccountId, entry.AvailableBalance);
+
+        var filter = Builders<AccountBalanceEntry>.Filter.And(
+            Builders<AccountBalanceEntry>.Filter.Eq(b => b.CompanyId, entry.CompanyId),
+            Builders<AccountBalanceEntry>.Filter.Eq(b => b.AccountId, entry.AccountId));
+
+        var options = new ReplaceOptions { IsUpsert = true };
 
         if (_dbContext.Session is not null)
-            await _collection.InsertOneAsync(_dbContext.Session, entry, cancellationToken: cancellationToken);
+            await _collection.ReplaceOneAsync(_dbContext.Session, filter, entry, options, cancellationToken);
         else
-            await _collection.InsertOneAsync(entry, cancellationToken: cancellationToken);
-    }
-
-    public async Task UpdateAsync(AccountBalanceEntry entry, CancellationToken cancellationToken = default)
-    {
-        _logger.LogDebug("Updating AccountBalance {Id}, new AvailableBalance={Balance}",
-            entry.Id, entry.AvailableBalance);
-
-        var filter = Builders<AccountBalanceEntry>.Filter.Eq(b => b.Id, entry.Id);
-
-        if (_dbContext.Session is not null)
-            await _collection.ReplaceOneAsync(_dbContext.Session, filter, entry, cancellationToken: cancellationToken);
-        else
-            await _collection.ReplaceOneAsync(filter, entry, cancellationToken: cancellationToken);
+            await _collection.ReplaceOneAsync(filter, entry, options, cancellationToken);
     }
 }

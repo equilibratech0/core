@@ -21,16 +21,16 @@ public class ProcessedEventRepository : IProcessedEventRepository
         _logger = logger;
     }
 
-    public async Task<bool> ExistsAsync(string idempotencyKey, CancellationToken cancellationToken = default)
+    public async Task<bool> ExistsAsync(Guid transactionId, CancellationToken cancellationToken = default)
     {
-        var filter = Builders<ProcessedEvent>.Filter.Eq(e => e.IdempotencyKey, idempotencyKey);
+        var filter = Builders<ProcessedEvent>.Filter.Eq(e => e.TransactionId, transactionId);
         var count = await _collection.CountDocumentsAsync(filter, cancellationToken: cancellationToken);
         return count > 0;
     }
 
     public async Task AddAsync(ProcessedEvent processedEvent, CancellationToken cancellationToken = default)
     {
-        _logger.LogDebug("Recording ProcessedEvent for IdempotencyKey {Key}", processedEvent.IdempotencyKey);
+        _logger.LogDebug("Recording ProcessedEvent for TransactionId {TransactionId}", processedEvent.TransactionId);
 
         if (_dbContext.Session is not null)
             await _collection.InsertOneAsync(_dbContext.Session, processedEvent, cancellationToken: cancellationToken);

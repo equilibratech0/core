@@ -19,7 +19,6 @@ public class AmountPayload
     public decimal? GrossAmount { get; set; }
     public decimal? NetAmount { get; set; }
     public decimal? PaymentFee { get; set; }
-    public decimal? PlatformFee { get; set; }
 }
 
 public class AccountPayload

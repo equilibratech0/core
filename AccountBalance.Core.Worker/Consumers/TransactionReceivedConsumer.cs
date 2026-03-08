@@ -26,18 +26,15 @@ public class TransactionReceivedConsumer : AzureServiceBusConsumer<TransactionRe
     protected override async Task ProcessMessageAsync(TransactionReceivedEvent @event, CancellationToken cancellationToken)
     {
         _consumerLogger.LogInformation(
-            "Received TransactionReceivedEvent: TransactionId={TransactionId}, EventType={EventType}, IdempotencyKey={Key}",
-            @event.TransactionId, @event.EventType, @event.IdempotencyKey);
+            "Received TransactionReceivedEvent: TransactionId={TransactionId}, CompanyId={CompanyId}, EventType={EventType}",
+            @event.TransactionId, @event.CompanyId, @event.EventType);
 
         using var scope = _serviceProvider.CreateScope();
         var handler = scope.ServiceProvider.GetRequiredService<IProcessTransactionHandler>();
 
         var command = new ProcessTransactionCommand(
             @event.TransactionId,
-            @event.ClientId,
-            @event.ClientName,
-            @event.UserIds,
-            @event.IdempotencyKey,
+            @event.CompanyId,
             @event.EventType,
             @event.RawPayload);
 

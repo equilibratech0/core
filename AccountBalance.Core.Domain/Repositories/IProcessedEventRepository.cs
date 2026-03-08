@@ -4,6 +4,6 @@ using AccountBalance.Core.Domain.Entities;
 
 public interface IProcessedEventRepository
 {
-    Task<bool> ExistsAsync(string idempotencyKey, CancellationToken cancellationToken = default);
+    Task<bool> ExistsAsync(Guid transactionId, CancellationToken cancellationToken = default);
     Task AddAsync(ProcessedEvent processedEvent, CancellationToken cancellationToken = default);
 }

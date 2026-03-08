@@ -18,7 +18,7 @@ public class ProcessTransactionHandler : IProcessTransactionHandler
     private readonly IMovementRepository _movementRepository;
     private readonly IAccountBalanceRepository _balanceRepository;
     private readonly IProcessedEventRepository _processedEventRepository;
-    private readonly IClientAccountMappingRepository _clientAccountMappingRepository;
+    private readonly ICompanyAccountMappingRepository _companyAccountMappingRepository;
     private readonly IMongoDbContext _dbContext;
     private readonly ILogger<ProcessTransactionHandler> _logger;
 
@@ -31,14 +31,14 @@ public class ProcessTransactionHandler : IProcessTransactionHandler
         IMovementRepository movementRepository,
         IAccountBalanceRepository balanceRepository,
         IProcessedEventRepository processedEventRepository,
-        IClientAccountMappingRepository clientAccountMappingRepository,
+        ICompanyAccountMappingRepository companyAccountMappingRepository,
         IMongoDbContext dbContext,
         ILogger<ProcessTransactionHandler> logger)
     {
         _movementRepository = movementRepository ?? throw new ArgumentNullException(nameof(movementRepository));
         _balanceRepository = balanceRepository ?? throw new ArgumentNullException(nameof(balanceRepository));
         _processedEventRepository = processedEventRepository ?? throw new ArgumentNullException(nameof(processedEventRepository));
-        _clientAccountMappingRepository = clientAccountMappingRepository ?? throw new ArgumentNullException(nameof(clientAccountMappingRepository));
+        _companyAccountMappingRepository = companyAccountMappingRepository ?? throw new ArgumentNullException(nameof(companyAccountMappingRepository));
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -46,12 +46,12 @@ public class ProcessTransactionHandler : IProcessTransactionHandler
     public async Task HandleAsync(ProcessTransactionCommand command, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation(
-            "Processing transaction {TransactionId}, EventType={EventType}, IdempotencyKey={Key}",
-            command.TransactionId, command.EventType, command.IdempotencyKey);
+            "Processing transaction {TransactionId}, CompanyId={CompanyId}, EventType={EventType}",
+            command.TransactionId, command.CompanyId, command.EventType);
 
-        if (await _processedEventRepository.ExistsAsync(command.IdempotencyKey, cancellationToken))
+        if (await _processedEventRepository.ExistsAsync(command.TransactionId, cancellationToken))
         {
-            _logger.LogWarning("Duplicate event skipped. IdempotencyKey: {Key}", command.IdempotencyKey);
+            _logger.LogWarning("Duplicate event skipped. TransactionId: {TransactionId}", command.TransactionId);
             return;
         }
 
@@ -60,13 +60,15 @@ public class ProcessTransactionHandler : IProcessTransactionHandler
         var currency = payload.Account?.Currency
             ?? throw new InvalidOperationException("Account currency is required.");
 
+        var accountId = payload.Account?.AccountId
+            ?? throw new InvalidOperationException("Account ID is required.");
+
         var amount = new Amount(
             payload.Amount.TotalAmount,
             currency,
             payload.Amount.GrossAmount,
             payload.Amount.NetAmount,
-            payload.Amount.PaymentFee,
-            payload.Amount.PlatformFee);
+            payload.Amount.PaymentFee);
 
         PaymentMethodDetails? paymentMethod = payload.PaymentMethod is not null
             ? new PaymentMethodDetails(
@@ -84,8 +86,6 @@ public class ProcessTransactionHandler : IProcessTransactionHandler
                     : null)
             : null;
 
-        var accountId = payload.Account?.AccountId ?? command.ClientId.ToString();
-
         var movement = Movement.Create(
             command.EventType,
             amount,
@@ -98,43 +98,28 @@ public class ProcessTransactionHandler : IProcessTransactionHandler
 
         var direction = MovementClassifier.Classify(command.EventType);
 
-        var balance = await _balanceRepository.GetByAccountAndCurrencyAsync(
-            command.ClientId, accountId, amount.Currency, cancellationToken);
-
-        bool isNewBalance = balance is null;
-        balance ??= AccountBalanceEntry.Create(command.ClientId, accountId, amount.Currency);
+        var balance = await _balanceRepository.GetByAccountAsync(
+            command.CompanyId, accountId, cancellationToken)
+            ?? AccountBalanceEntry.Create(command.CompanyId, accountId, amount.Currency);
 
         if (direction == MovementDirection.PayIn)
             balance.AddBalance(amount.TotalAmount);
         else
             balance.SubtractBalance(amount.TotalAmount);
 
-        var existingMapping = await _clientAccountMappingRepository
-            .GetByClientIdAsync(command.ClientId, cancellationToken);
+        var mapping = new CompanyAccountMapping(command.CompanyId, accountId);
 
         await _dbContext.BeginTransactionAsync(cancellationToken);
         try
         {
             await _movementRepository.AddAsync(movement, cancellationToken);
 
-            if (isNewBalance)
-                await _balanceRepository.AddAsync(balance, cancellationToken);
-            else
-                await _balanceRepository.UpdateAsync(balance, cancellationToken);
+            await _balanceRepository.UpsertAsync(balance, cancellationToken);
 
-            if (existingMapping is null)
-            {
-                var mapping = new ClientAccountMapping(command.ClientId, command.ClientName, accountId, command.UserIds);
-                await _clientAccountMappingRepository.AddAsync(mapping, cancellationToken);
-            }
-            else
-            {
-                existingMapping.Update(accountId, command.UserIds);
-                await _clientAccountMappingRepository.UpdateAsync(existingMapping, cancellationToken);
-            }
+            await _companyAccountMappingRepository.UpsertAsync(mapping, cancellationToken);
 
             await _processedEventRepository.AddAsync(
-                new ProcessedEvent(command.IdempotencyKey, command.TransactionId), cancellationToken);
+                new ProcessedEvent(command.TransactionId), cancellationToken);
 
             await _dbContext.CommitTransactionAsync(cancellationToken);
 

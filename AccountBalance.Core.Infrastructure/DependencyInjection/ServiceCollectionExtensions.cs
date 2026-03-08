@@ -19,7 +19,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IMovementRepository, MovementRepository>();
         services.AddScoped<IAccountBalanceRepository, AccountBalanceRepository>();
         services.AddScoped<IProcessedEventRepository, ProcessedEventRepository>();
-        services.AddScoped<IClientAccountMappingRepository, ClientAccountMappingRepository>();
+        services.AddScoped<ICompanyAccountMappingRepository, CompanyAccountMappingRepository>();
 
         return services;
     }

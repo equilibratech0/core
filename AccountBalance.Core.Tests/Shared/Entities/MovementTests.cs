@@ -8,7 +8,7 @@ using global::Shared.Domain.Exceptions;
 public class MovementTests
 {
     private static Amount CreateValidAmount(decimal total = 100m, Currency currency = Currency.USD) =>
-        new(total, currency, total + 5m, total - 2m, 3m, 4m);
+        new(total, currency, total + 5m, total - 2m, 3m);
 
     [Fact]
     public void Create_WithValidParameters_ShouldInitializeCorrectly()
