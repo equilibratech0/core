@@ -19,6 +19,7 @@ public class ProcessTransactionHandlerTests
     private readonly Mock<IAccountBalanceRepository> _balanceRepo = new();
     private readonly Mock<IProcessedEventRepository> _processedEventRepo = new();
     private readonly Mock<ICompanyAccountMappingRepository> _mappingRepo = new();
+    private readonly Mock<IUserAccountAssignmentRepository> _userAccountAssignmentRepo = new();
     private readonly Mock<IMongoDbContext> _dbContext = new();
     private readonly Mock<ILogger<ProcessTransactionHandler>> _logger = new();
 
@@ -27,6 +28,7 @@ public class ProcessTransactionHandlerTests
         _balanceRepo.Object,
         _processedEventRepo.Object,
         _mappingRepo.Object,
+        _userAccountAssignmentRepo.Object,
         _dbContext.Object,
         _logger.Object);
 
@@ -309,7 +311,7 @@ public class ProcessTransactionHandlerTests
     {
         var act = () => new ProcessTransactionHandler(
             null!, _balanceRepo.Object, _processedEventRepo.Object,
-            _mappingRepo.Object, _dbContext.Object, _logger.Object);
+            _mappingRepo.Object, _userAccountAssignmentRepo.Object, _dbContext.Object, _logger.Object);
 
         act.Should().Throw<ArgumentNullException>().WithParameterName("movementRepository");
     }
@@ -319,7 +321,7 @@ public class ProcessTransactionHandlerTests
     {
         var act = () => new ProcessTransactionHandler(
             _movementRepo.Object, null!, _processedEventRepo.Object,
-            _mappingRepo.Object, _dbContext.Object, _logger.Object);
+            _mappingRepo.Object, _userAccountAssignmentRepo.Object, _dbContext.Object, _logger.Object);
 
         act.Should().Throw<ArgumentNullException>().WithParameterName("balanceRepository");
     }
@@ -329,7 +331,7 @@ public class ProcessTransactionHandlerTests
     {
         var act = () => new ProcessTransactionHandler(
             _movementRepo.Object, _balanceRepo.Object, null!,
-            _mappingRepo.Object, _dbContext.Object, _logger.Object);
+            _mappingRepo.Object, _userAccountAssignmentRepo.Object, _dbContext.Object, _logger.Object);
 
         act.Should().Throw<ArgumentNullException>().WithParameterName("processedEventRepository");
     }
@@ -339,7 +341,7 @@ public class ProcessTransactionHandlerTests
     {
         var act = () => new ProcessTransactionHandler(
             _movementRepo.Object, _balanceRepo.Object, _processedEventRepo.Object,
-            null!, _dbContext.Object, _logger.Object);
+            null!, _userAccountAssignmentRepo.Object, _dbContext.Object, _logger.Object);
 
         act.Should().Throw<ArgumentNullException>().WithParameterName("companyAccountMappingRepository");
     }
@@ -349,7 +351,7 @@ public class ProcessTransactionHandlerTests
     {
         var act = () => new ProcessTransactionHandler(
             _movementRepo.Object, _balanceRepo.Object, _processedEventRepo.Object,
-            _mappingRepo.Object, null!, _logger.Object);
+            _mappingRepo.Object, _userAccountAssignmentRepo.Object, null!, _logger.Object);
 
         act.Should().Throw<ArgumentNullException>().WithParameterName("dbContext");
     }
@@ -359,7 +361,7 @@ public class ProcessTransactionHandlerTests
     {
         var act = () => new ProcessTransactionHandler(
             _movementRepo.Object, _balanceRepo.Object, _processedEventRepo.Object,
-            _mappingRepo.Object, _dbContext.Object, null!);
+            _mappingRepo.Object, _userAccountAssignmentRepo.Object, _dbContext.Object, null!);
 
         act.Should().Throw<ArgumentNullException>().WithParameterName("logger");
     }

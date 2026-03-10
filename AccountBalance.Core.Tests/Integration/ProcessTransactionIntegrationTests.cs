@@ -11,6 +11,7 @@ using AccountBalance.Core.Application.DTOs;
 using AccountBalance.Core.Application.Handlers;
 using AccountBalance.Core.Domain.Aggregates;
 using AccountBalance.Core.Domain.Entities;
+using AccountBalance.Core.Domain.Repositories;
 using AccountBalance.Core.Infrastructure.Persistence;
 using AccountBalance.Core.Tests.Integration.Fixtures;
 using global::Shared.Domain.Enums;
@@ -48,10 +49,11 @@ public class ProcessTransactionIntegrationTests
         });
         var configContext = new MongoDbConfigContext(configOptions, NullLogger<MongoDbConfigContext>.Instance);
         var mappingRepo = new CompanyAccountMappingRepository(configContext, NullLogger<CompanyAccountMappingRepository>.Instance);
+        var userAccountAssignmentRepo = new UserAccountAssignmentRepository(configContext, NullLogger<UserAccountAssignmentRepository>.Instance);
 
         var handler = new ProcessTransactionHandler(
             movementRepo, balanceRepo, processedEventRepo,
-            mappingRepo, dbContext, NullLogger<ProcessTransactionHandler>.Instance);
+            mappingRepo, userAccountAssignmentRepo, dbContext, NullLogger<ProcessTransactionHandler>.Instance);
 
         return (handler, dbContext);
     }

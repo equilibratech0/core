@@ -19,6 +19,7 @@ public class ProcessTransactionHandler : IProcessTransactionHandler
     private readonly IAccountBalanceRepository _balanceRepository;
     private readonly IProcessedEventRepository _processedEventRepository;
     private readonly ICompanyAccountMappingRepository _companyAccountMappingRepository;
+    private readonly IUserAccountAssignmentRepository _userAccountAssignmentRepository;
     private readonly IMongoDbContext _dbContext;
     private readonly ILogger<ProcessTransactionHandler> _logger;
 
@@ -32,6 +33,7 @@ public class ProcessTransactionHandler : IProcessTransactionHandler
         IAccountBalanceRepository balanceRepository,
         IProcessedEventRepository processedEventRepository,
         ICompanyAccountMappingRepository companyAccountMappingRepository,
+        IUserAccountAssignmentRepository userAccountAssignmentRepository,
         IMongoDbContext dbContext,
         ILogger<ProcessTransactionHandler> logger)
     {
@@ -39,6 +41,7 @@ public class ProcessTransactionHandler : IProcessTransactionHandler
         _balanceRepository = balanceRepository ?? throw new ArgumentNullException(nameof(balanceRepository));
         _processedEventRepository = processedEventRepository ?? throw new ArgumentNullException(nameof(processedEventRepository));
         _companyAccountMappingRepository = companyAccountMappingRepository ?? throw new ArgumentNullException(nameof(companyAccountMappingRepository));
+        _userAccountAssignmentRepository = userAccountAssignmentRepository ?? throw new ArgumentNullException(nameof(userAccountAssignmentRepository));
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -132,6 +135,9 @@ public class ProcessTransactionHandler : IProcessTransactionHandler
 
         await _companyAccountMappingRepository.UpsertAsync(
             new CompanyAccountMapping(command.CompanyId, accountId), cancellationToken);
+
+        await _userAccountAssignmentRepository.AssignAccountToAdminUsersAsync(
+            command.CompanyId, accountId, cancellationToken);
     }
 
     private static MovementPayload DeserializePayload(string rawPayload)
