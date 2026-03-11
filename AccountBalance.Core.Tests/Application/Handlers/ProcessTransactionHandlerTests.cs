@@ -55,7 +55,7 @@ public class ProcessTransactionHandlerTests
         });
 
     private static ProcessTransactionCommand CreateCommand(
-        MovementEventType eventType = MovementEventType.TransactionCreated,
+        MovementEventType eventType = MovementEventType.TransactionApproved,
         string? rawPayload = null) =>
         new(
             TransactionId: Guid.NewGuid(),
@@ -87,7 +87,7 @@ public class ProcessTransactionHandlerTests
     [Fact]
     public async Task HandleAsync_PayInWithNewBalance_ShouldCreateBalanceWithCredit()
     {
-        var command = CreateCommand(MovementEventType.TransactionCreated);
+        var command = CreateCommand(MovementEventType.TransactionApproved);
 
         _processedEventRepo.Setup(r => r.ExistsAsync(command.TransactionId, command.EventType, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
@@ -118,7 +118,7 @@ public class ProcessTransactionHandlerTests
     [Fact]
     public async Task HandleAsync_PayOutWithExistingBalance_ShouldUpdateBalanceWithDebit()
     {
-        var command = CreateCommand(MovementEventType.PayoutCreated);
+        var command = CreateCommand(MovementEventType.PayoutFinished);
         var existingBalance = AccountBalanceEntry.Create(command.CompanyId, "acc-001", Currency.USD);
         existingBalance.AddBalance(500m);
 

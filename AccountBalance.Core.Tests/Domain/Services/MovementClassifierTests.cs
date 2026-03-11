@@ -9,22 +9,16 @@ using AccountBalance.Core.Domain.Services;
 public class MovementClassifierTests
 {
     [Theory]
-    [InlineData(MovementEventType.TransactionCreated)]
     [InlineData(MovementEventType.TransactionApproved)]
     [InlineData(MovementEventType.TopupCreated)]
     [InlineData(MovementEventType.AdjustmentTopupCreated)]
     [InlineData(MovementEventType.AdjustmentRebateFeeCreated)]
     [InlineData(MovementEventType.RollingReserveReleased)]
     [InlineData(MovementEventType.ClaimClose)]
-    [InlineData(MovementEventType.ClaimCloseModified)]
     [InlineData(MovementEventType.ChargebackClose)]
-    [InlineData(MovementEventType.ChargebackCloseModified)]
-    [InlineData(MovementEventType.PaymentOrderPaid)]
-    [InlineData(MovementEventType.PaymentOrderCancelled)]
+    [InlineData(MovementEventType.PayoutError)]
     [InlineData(MovementEventType.WithdrawalCancelled)]
     [InlineData(MovementEventType.WithdrawalReturned)]
-    [InlineData(MovementEventType.PayoutError)]
-    [InlineData(MovementEventType.SettlementUnpublished)]
     [InlineData(MovementEventType.PartialPayment)]
     public void Classify_PayInEventTypes_ShouldReturnPayIn(MovementEventType eventType)
     {
@@ -34,25 +28,15 @@ public class MovementClassifierTests
     }
 
     [Theory]
-    [InlineData(MovementEventType.PayoutCreated)]
     [InlineData(MovementEventType.PayoutFinished)]
-    [InlineData(MovementEventType.PayoutFinishedRefund)]
-    [InlineData(MovementEventType.ClaimOpen)]
     [InlineData(MovementEventType.ClaimRefund)]
-    [InlineData(MovementEventType.ClaimReopen)]
-    [InlineData(MovementEventType.ChargebackOpen)]
-    [InlineData(MovementEventType.ChargebackReopen)]
     [InlineData(MovementEventType.ChargebackRefund)]
     [InlineData(MovementEventType.SettlementPublished)]
     [InlineData(MovementEventType.AccountSettlement)]
     [InlineData(MovementEventType.AdjustmentCreated)]
     [InlineData(MovementEventType.AdjustmentRollingReserveCreated)]
     [InlineData(MovementEventType.AdjustmentBalanceFeeCreated)]
-    [InlineData(MovementEventType.WithdrawalApproved)]
     [InlineData(MovementEventType.WithdrawalPaid)]
-    [InlineData(MovementEventType.PaymentOrderProcessed)]
-    [InlineData(MovementEventType.PaymentOrderProcess)]
-    [InlineData(MovementEventType.PaymentOrderPaidReversed)]
     public void Classify_PayOutEventTypes_ShouldReturnPayOut(MovementEventType eventType)
     {
         var result = MovementClassifier.Classify(eventType);

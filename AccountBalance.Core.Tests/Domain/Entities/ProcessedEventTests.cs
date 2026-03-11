@@ -10,7 +10,7 @@ public class ProcessedEventTests
     public void Constructor_WithValidParameters_ShouldInitializeCorrectly()
     {
         var transactionId = Guid.NewGuid();
-        var eventType = MovementEventType.TransactionCreated;
+        var eventType = MovementEventType.TransactionApproved;
 
         var processedEvent = new ProcessedEvent(transactionId, eventType);
 
@@ -23,8 +23,8 @@ public class ProcessedEventTests
     [Fact]
     public void Constructor_ShouldGenerateUniqueIds()
     {
-        var event1 = new ProcessedEvent(Guid.NewGuid(), MovementEventType.TransactionCreated);
-        var event2 = new ProcessedEvent(Guid.NewGuid(), MovementEventType.PayoutCreated);
+        var event1 = new ProcessedEvent(Guid.NewGuid(), MovementEventType.TransactionApproved);
+        var event2 = new ProcessedEvent(Guid.NewGuid(), MovementEventType.PayoutFinished);
 
         event1.Id.Should().NotBe(event2.Id);
     }
@@ -32,7 +32,7 @@ public class ProcessedEventTests
     [Fact]
     public void Constructor_WithEmptyGuidTransactionId_ShouldSucceed()
     {
-        var processedEvent = new ProcessedEvent(Guid.Empty, MovementEventType.TransactionCreated);
+        var processedEvent = new ProcessedEvent(Guid.Empty, MovementEventType.TransactionApproved);
 
         processedEvent.TransactionId.Should().Be(Guid.Empty);
     }
@@ -42,8 +42,8 @@ public class ProcessedEventTests
     {
         var transactionId = Guid.NewGuid();
 
-        var event1 = new ProcessedEvent(transactionId, MovementEventType.TransactionCreated);
-        var event2 = new ProcessedEvent(transactionId, MovementEventType.ChargebackOpen);
+        var event1 = new ProcessedEvent(transactionId, MovementEventType.TransactionApproved);
+        var event2 = new ProcessedEvent(transactionId, MovementEventType.ChargebackClose);
 
         event1.TransactionId.Should().Be(event2.TransactionId);
         event1.EventType.Should().NotBe(event2.EventType);

@@ -18,7 +18,7 @@ public class MovementTests
         var merchant = new MerchantDetails("merch-1", "TestMerchant", new ShopDetails("shop-1", "TestShop"));
 
         var movement = Movement.Create(
-            MovementEventType.TransactionCreated,
+            MovementEventType.TransactionApproved,
             amount,
             "txn-001",
             "acc-001",
@@ -28,7 +28,7 @@ public class MovementTests
             "Test description");
 
         movement.Id.Should().NotBeNull();
-        movement.EventType.Should().Be(MovementEventType.TransactionCreated);
+        movement.EventType.Should().Be(MovementEventType.TransactionApproved);
         movement.Amount.Should().Be(amount);
         movement.TransactionId.Should().Be("txn-001");
         movement.AccountId.Should().Be("acc-001");
@@ -43,7 +43,7 @@ public class MovementTests
     public void Create_WithNullAmount_ShouldThrowDomainException()
     {
         var act = () => Movement.Create(
-            MovementEventType.TransactionCreated, null!, "txn-001", null, null, null);
+            MovementEventType.TransactionApproved, null!, "txn-001", null, null, null);
 
         act.Should().Throw<DomainException>()
             .WithMessage("*Amount*");
@@ -55,7 +55,7 @@ public class MovementTests
         var amount = CreateValidAmount();
 
         var movement = Movement.Create(
-            MovementEventType.PayoutCreated,
+            MovementEventType.PayoutFinished,
             amount,
             "txn-002",
             null,
@@ -76,16 +76,16 @@ public class MovementTests
     {
         var amount = CreateValidAmount();
 
-        var m1 = Movement.Create(MovementEventType.TransactionCreated, amount, "txn-1", null, null, null);
-        var m2 = Movement.Create(MovementEventType.TransactionCreated, amount, "txn-2", null, null, null);
+        var m1 = Movement.Create(MovementEventType.TransactionApproved, amount, "txn-1", null, null, null);
+        var m2 = Movement.Create(MovementEventType.TransactionApproved, amount, "txn-2", null, null, null);
 
         m1.Id.Should().NotBe(m2.Id);
     }
 
     [Theory]
-    [InlineData(MovementEventType.TransactionCreated)]
+    [InlineData(MovementEventType.TransactionApproved)]
     [InlineData(MovementEventType.PayoutFinished)]
-    [InlineData(MovementEventType.ClaimOpen)]
+    [InlineData(MovementEventType.ClaimRefund)]
     [InlineData(MovementEventType.SettlementPublished)]
     public void Create_WithDifferentEventTypes_ShouldStoreCorrectly(MovementEventType eventType)
     {
@@ -104,7 +104,7 @@ public class MovementTests
         var merchant = new MerchantDetails("merch-1", "MyMerchant", shop);
 
         var movement = Movement.Create(
-            MovementEventType.TransactionCreated, amount, "txn-001", null, null, null, merchant);
+            MovementEventType.TransactionApproved, amount, "txn-001", null, null, null, merchant);
 
         movement.Merchant.Should().NotBeNull();
         movement.Merchant!.MerchantId.Should().Be("merch-1");

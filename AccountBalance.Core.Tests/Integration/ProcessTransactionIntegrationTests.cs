@@ -90,7 +90,7 @@ public class ProcessTransactionIntegrationTests
         new(
             TransactionId: Guid.NewGuid(),
             CompanyId: companyId,
-            EventType: MovementEventType.TransactionCreated,
+            EventType: MovementEventType.TransactionApproved,
             RawPayload: BuildPayload(amount, currency, Guid.NewGuid().ToString(), accountId));
 
     private static ProcessTransactionCommand CreatePayOutCommand(
@@ -101,7 +101,7 @@ public class ProcessTransactionIntegrationTests
         new(
             TransactionId: Guid.NewGuid(),
             CompanyId: companyId,
-            EventType: MovementEventType.PayoutCreated,
+            EventType: MovementEventType.PayoutFinished,
             RawPayload: BuildPayload(amount, currency, Guid.NewGuid().ToString(), accountId));
 
     #region Full PayIn Flow
@@ -227,13 +227,13 @@ public class ProcessTransactionIntegrationTests
         var payInCommand = new ProcessTransactionCommand(
             TransactionId: transactionId,
             CompanyId: companyId,
-            EventType: MovementEventType.TransactionCreated,
+            EventType: MovementEventType.TransactionApproved,
             RawPayload: BuildPayload(500m, Currency.USD, Guid.NewGuid().ToString()));
 
         var chargebackCommand = new ProcessTransactionCommand(
             TransactionId: transactionId,
             CompanyId: companyId,
-            EventType: MovementEventType.ChargebackOpen,
+            EventType: MovementEventType.ChargebackClose,
             RawPayload: BuildPayload(500m, Currency.USD, Guid.NewGuid().ToString()));
 
         await handler.HandleAsync(payInCommand);
@@ -388,7 +388,7 @@ public class ProcessTransactionIntegrationTests
         var command = new ProcessTransactionCommand(
             TransactionId: Guid.NewGuid(),
             CompanyId: companyId,
-            EventType: MovementEventType.TransactionCreated,
+            EventType: MovementEventType.TransactionApproved,
             RawPayload: rawPayload);
 
         await handler.HandleAsync(command);
