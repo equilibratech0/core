@@ -17,6 +17,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+            submodules: true
 
       - name: Set up .NET Core
         uses: actions/setup-dotnet@v4
@@ -62,4 +64,5 @@ jobs:
           app-name: 'accountBalance-core-dev'
           slot-name: 'Production'
           package: .
+
           
