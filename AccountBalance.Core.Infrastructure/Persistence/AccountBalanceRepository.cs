@@ -2,6 +2,7 @@ namespace AccountBalance.Core.Infrastructure.Persistence;
 
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
+using Shared.Domain.Enums;
 using Shared.Infrastructure.Persistence.Abstractions;
 using AccountBalance.Core.Domain.Aggregates;
 using AccountBalance.Core.Domain.Repositories;
@@ -22,11 +23,12 @@ public class AccountBalanceRepository : IAccountBalanceRepository
     }
 
     public async Task<AccountBalanceEntry?> GetByAccountAsync(
-        Guid companyId, string accountId, CancellationToken cancellationToken = default)
+        Guid companyId, string accountId, Currency currency, CancellationToken cancellationToken = default)
     {
         var filter = Builders<AccountBalanceEntry>.Filter.And(
             Builders<AccountBalanceEntry>.Filter.Eq(b => b.CompanyId, companyId),
-            Builders<AccountBalanceEntry>.Filter.Eq(b => b.AccountId, accountId));
+            Builders<AccountBalanceEntry>.Filter.Eq(b => b.AccountId, accountId),
+            Builders<AccountBalanceEntry>.Filter.Eq(b => b.Currency, currency));
 
         if (_dbContext.Session is not null)
             return await _collection.Find(_dbContext.Session, filter).SingleOrDefaultAsync(cancellationToken);
@@ -41,7 +43,8 @@ public class AccountBalanceRepository : IAccountBalanceRepository
 
         var filter = Builders<AccountBalanceEntry>.Filter.And(
             Builders<AccountBalanceEntry>.Filter.Eq(b => b.CompanyId, entry.CompanyId),
-            Builders<AccountBalanceEntry>.Filter.Eq(b => b.AccountId, entry.AccountId));
+            Builders<AccountBalanceEntry>.Filter.Eq(b => b.AccountId, entry.AccountId),
+            Builders<AccountBalanceEntry>.Filter.Eq(b => b.Currency, entry.Currency));
 
         var options = new ReplaceOptions { IsUpsert = true };
 

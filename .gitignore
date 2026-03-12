@@ -49,3 +49,6 @@ Desktop.ini
 
 # Integration test local overrides
 **/appsettings.Integration.local.json
+
+# Development settings with secrets
+**/appsettings.Development.json

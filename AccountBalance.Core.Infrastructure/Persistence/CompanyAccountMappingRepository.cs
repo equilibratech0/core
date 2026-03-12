@@ -25,8 +25,14 @@ public class CompanyAccountMappingRepository : ICompanyAccountMappingRepository
             mapping.CompanyId, mapping.AccountId);
 
         var filter = Builders<CompanyAccountMapping>.Filter.Eq(m => m.CompanyId, mapping.CompanyId);
-        var options = new ReplaceOptions { IsUpsert = true };
+        var update = Builders<CompanyAccountMapping>.Update
+            .Set(m => m.AccountId, mapping.AccountId)
+            .Set(m => m.UpdatedAt, mapping.UpdatedAt)
+            .SetOnInsert(m => m.Id, mapping.Id)
+            .SetOnInsert(m => m.CompanyId, mapping.CompanyId)
+            .SetOnInsert(m => m.CreatedAt, mapping.CreatedAt);
+        var options = new UpdateOptions { IsUpsert = true };
 
-        await _collection.ReplaceOneAsync(filter, mapping, options, cancellationToken);
+        await _collection.UpdateOneAsync(filter, update, options, cancellationToken);
     }
 }

@@ -103,7 +103,7 @@ public class ProcessTransactionHandler : IProcessTransactionHandler
         var direction = MovementClassifier.Classify(command.EventType);
 
         var balance = await _balanceRepository.GetByAccountAsync(
-            command.CompanyId, accountId, cancellationToken)
+            command.CompanyId, accountId, amount.Currency, cancellationToken)
             ?? AccountBalanceEntry.Create(command.CompanyId, accountId, amount.Currency);
 
         if (direction == MovementDirection.PayIn)

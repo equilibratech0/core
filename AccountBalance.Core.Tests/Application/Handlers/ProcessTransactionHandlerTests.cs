@@ -92,7 +92,7 @@ public class ProcessTransactionHandlerTests
         _processedEventRepo.Setup(r => r.ExistsAsync(command.TransactionId, command.EventType, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
         _balanceRepo.Setup(r => r.GetByAccountAsync(
-                command.CompanyId, "acc-001", It.IsAny<CancellationToken>()))
+                command.CompanyId, "acc-001", Currency.USD, It.IsAny<CancellationToken>()))
             .ReturnsAsync((AccountBalanceEntry?)null);
 
         var handler = CreateHandler();
@@ -125,7 +125,7 @@ public class ProcessTransactionHandlerTests
         _processedEventRepo.Setup(r => r.ExistsAsync(command.TransactionId, command.EventType, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
         _balanceRepo.Setup(r => r.GetByAccountAsync(
-                command.CompanyId, "acc-001", It.IsAny<CancellationToken>()))
+                command.CompanyId, "acc-001", Currency.USD, It.IsAny<CancellationToken>()))
             .ReturnsAsync(existingBalance);
 
         var handler = CreateHandler();
@@ -148,7 +148,7 @@ public class ProcessTransactionHandlerTests
         _processedEventRepo.Setup(r => r.ExistsAsync(command.TransactionId, command.EventType, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
         _balanceRepo.Setup(r => r.GetByAccountAsync(
-                command.CompanyId, "acc-001", It.IsAny<CancellationToken>()))
+                command.CompanyId, "acc-001", Currency.USD, It.IsAny<CancellationToken>()))
             .ReturnsAsync((AccountBalanceEntry?)null);
 
         var handler = CreateHandler();
@@ -229,7 +229,7 @@ public class ProcessTransactionHandlerTests
         _processedEventRepo.Setup(r => r.ExistsAsync(command.TransactionId, command.EventType, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
         _balanceRepo.Setup(r => r.GetByAccountAsync(
-                command.CompanyId, "acc-001", It.IsAny<CancellationToken>()))
+                command.CompanyId, "acc-001", Currency.USD, It.IsAny<CancellationToken>()))
             .ReturnsAsync((AccountBalanceEntry?)null);
         _movementRepo.Setup(r => r.AddAsync(It.IsAny<global::Shared.Domain.Entities.Movement>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("DB failure"));
@@ -287,7 +287,7 @@ public class ProcessTransactionHandlerTests
         _processedEventRepo.Setup(r => r.ExistsAsync(command.TransactionId, command.EventType, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
         _balanceRepo.Setup(r => r.GetByAccountAsync(
-                command.CompanyId, "acc-full", It.IsAny<CancellationToken>()))
+                command.CompanyId, "acc-full", Currency.EUR, It.IsAny<CancellationToken>()))
             .ReturnsAsync((AccountBalanceEntry?)null);
 
         var handler = CreateHandler();
@@ -379,7 +379,7 @@ public class ProcessTransactionHandlerTests
         _processedEventRepo.Setup(r => r.ExistsAsync(command.TransactionId, command.EventType, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
         _balanceRepo.Setup(r => r.GetByAccountAsync(
-                command.CompanyId, "acc-001", It.IsAny<CancellationToken>()))
+                command.CompanyId, "acc-001", Currency.USD, It.IsAny<CancellationToken>()))
             .ReturnsAsync((AccountBalanceEntry?)null);
 
         _dbContext.Setup(c => c.BeginTransactionAsync(It.IsAny<CancellationToken>()))
