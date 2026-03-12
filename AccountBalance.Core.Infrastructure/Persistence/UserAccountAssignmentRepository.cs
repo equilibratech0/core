@@ -22,9 +22,6 @@ public class UserAccountAssignmentRepository : IUserAccountAssignmentRepository
 
     public async Task AssignAccountToAdminUsersAsync(Guid companyId, string accountId, CancellationToken cancellationToken = default)
     {
-        if (!Guid.TryParse(accountId, out var accountGuid))
-            return;
-
         var adminFilter = Builders<User>.Filter.And(
             Builders<User>.Filter.Eq(u => u.CompanyId, companyId),
             Builders<User>.Filter.Eq(u => u.AccessLevel, AccessLevel.Admin));
@@ -35,10 +32,10 @@ public class UserAccountAssignmentRepository : IUserAccountAssignmentRepository
         {
             var filter = Builders<UserAccount>.Filter.And(
                 Builders<UserAccount>.Filter.Eq(ua => ua.UserId, admin.Id),
-                Builders<UserAccount>.Filter.Eq(ua => ua.AccountId, accountGuid));
+                Builders<UserAccount>.Filter.Eq(ua => ua.AccountId, accountId));
 
             var options = new ReplaceOptions { IsUpsert = true };
-            var userAccount = new UserAccount(admin.Id, accountGuid);
+            var userAccount = new UserAccount(admin.Id, accountId);
 
             await _userAccountsCollection.ReplaceOneAsync(filter, userAccount, options, cancellationToken);
 
