@@ -1,6 +1,7 @@
 namespace AccountBalance.Core.Application.Handlers;
 
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using AccountBalance.Core.Application.Commands;
 using AccountBalance.Core.Application.DTOs;
@@ -25,7 +26,8 @@ public class ProcessTransactionHandler : IProcessTransactionHandler
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
-        PropertyNameCaseInsensitive = true
+        PropertyNameCaseInsensitive = true,
+        Converters = { new JsonStringEnumConverter() }
     };
 
     public ProcessTransactionHandler(
