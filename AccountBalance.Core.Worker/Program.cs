@@ -3,6 +3,8 @@ using AccountBalance.Core.Worker.Consumers;
 
 var builder = Host.CreateApplicationBuilder(args);
 
+builder.Logging.AddAzureWebAppDiagnostics();
+
 builder.Services.AddCoreInfrastructure(builder.Configuration);
 builder.Services.AddCoreApplication();
 builder.Services.AddHostedService<TransactionReceivedConsumer>();

@@ -10,6 +10,7 @@
   <ItemGroup>
     <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.20.1" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.*" />
+    <PackageReference Include="Microsoft.Extensions.Logging.AzureAppServices" Version="10.0.4" />
   </ItemGroup>
 
   <ItemGroup>
