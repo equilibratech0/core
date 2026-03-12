@@ -1,7 +1,7 @@
 using AccountBalance.Core.Infrastructure.DependencyInjection;
 using AccountBalance.Core.Worker.Consumers;
 
-var builder = Host.CreateApplicationBuilder(args);
+var builder = WebApplication.CreateBuilder(args);
 
 builder.Logging.AddAzureWebAppDiagnostics();
 
@@ -9,5 +9,8 @@ builder.Services.AddCoreInfrastructure(builder.Configuration);
 builder.Services.AddCoreApplication();
 builder.Services.AddHostedService<TransactionReceivedConsumer>();
 
-var host = builder.Build();
-host.Run();
+var app = builder.Build();
+
+app.MapGet("/health", () => Results.Ok("healthy"));
+
+app.Run();
