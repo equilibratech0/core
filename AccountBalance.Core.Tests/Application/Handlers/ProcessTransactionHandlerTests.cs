@@ -52,7 +52,7 @@ public class ProcessTransactionHandlerTests
                 PaymentFee = 1m
             },
             TransactionId = transactionId,
-            Account = new AccountPayload { AccountId = accountId, Currency = currency },
+            Account = new AccountPayload { AccountReference = accountId, Currency = currency },
             Country = country,
             Description = description
         });
@@ -272,7 +272,7 @@ public class ProcessTransactionHandlerTests
                 PaymentFee = 10m
             },
             TransactionId = "txn-full",
-            Account = new AccountPayload { AccountId = "acc-full", Currency = Currency.EUR },
+            Account = new AccountPayload { AccountReference = "acc-full", Currency = Currency.EUR },
             Country = "ES",
             Description = "Full payment",
             PaymentMethod = new PaymentMethodPayload
