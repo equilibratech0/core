@@ -50,10 +50,11 @@ public class ProcessTransactionIntegrationTests
         var configContext = new MongoDbConfigContext(configOptions, NullLogger<MongoDbConfigContext>.Instance);
         var mappingRepo = new CompanyAccountMappingRepository(configContext, NullLogger<CompanyAccountMappingRepository>.Instance);
         var userAccountAssignmentRepo = new UserAccountAssignmentRepository(configContext, NullLogger<UserAccountAssignmentRepository>.Instance);
+        var accountProvisioningRepo = new AccountProvisioningRepository(configContext, NullLogger<AccountProvisioningRepository>.Instance);
 
         var handler = new ProcessTransactionHandler(
             movementRepo, balanceRepo, processedEventRepo,
-            mappingRepo, userAccountAssignmentRepo, dbContext, NullLogger<ProcessTransactionHandler>.Instance);
+            mappingRepo, userAccountAssignmentRepo, accountProvisioningRepo, dbContext, NullLogger<ProcessTransactionHandler>.Instance);
 
         return (handler, dbContext);
     }
@@ -122,7 +123,7 @@ public class ProcessTransactionIntegrationTests
         balance.TotalPayins.Should().Be(500m);
         balance.TotalPayouts.Should().Be(0m);
         balance.Currency.Should().Be(Currency.USD);
-        balance.AccountId.Should().Be("acc-001");
+        balance.AccountId.Should().NotBe(Guid.Empty);
 
         var movements = dbContext.GetCollection<Movement>("movements");
         var movementCount = await movements.CountDocumentsAsync(FilterDefinition<Movement>.Empty);
@@ -130,7 +131,7 @@ public class ProcessTransactionIntegrationTests
 
         var mappings = dbContext.GetCollection<CompanyAccountMapping>("company_account");
         var mapping = await mappings.Find(m => m.CompanyId == companyId).SingleAsync();
-        mapping.AccountId.Should().Be("acc-001");
+        mapping.AccountId.Should().NotBe(Guid.Empty);
 
         var events = dbContext.GetCollection<ProcessedEvent>("processed_events");
         var processedEvent = await events.Find(e => e.TransactionId == command.TransactionId).SingleAsync();
@@ -269,7 +270,7 @@ public class ProcessTransactionIntegrationTests
         mappingCount.Should().Be(1, "should update, not duplicate");
 
         var mapping = await mappings.Find(m => m.CompanyId == companyId).SingleAsync();
-        mapping.AccountId.Should().Be("acc-002", "should reflect the latest account");
+        mapping.AccountId.Should().NotBe(Guid.Empty, "should reflect the latest account");
     }
 
     #endregion

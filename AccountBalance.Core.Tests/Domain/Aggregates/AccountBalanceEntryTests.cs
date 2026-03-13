@@ -11,7 +11,7 @@ public class AccountBalanceEntryTests
     public void Create_WithValidParameters_ShouldInitializeCorrectly()
     {
         var companyId = Guid.NewGuid();
-        var accountId = "ACC-001";
+        var accountId = Guid.NewGuid();
         var currency = Currency.USD;
 
         var entry = AccountBalanceEntry.Create(companyId, accountId, currency);
@@ -27,13 +27,10 @@ public class AccountBalanceEntryTests
         entry.UpdatedAt.Should().BeCloseTo(DateTimeOffset.UtcNow, TimeSpan.FromSeconds(2));
     }
 
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("   ")]
-    public void Create_WithInvalidAccountId_ShouldThrowDomainException(string? accountId)
+    [Fact]
+    public void Create_WithEmptyAccountId_ShouldThrowDomainException()
     {
-        var act = () => AccountBalanceEntry.Create(Guid.NewGuid(), accountId!, Currency.EUR);
+        var act = () => AccountBalanceEntry.Create(Guid.NewGuid(), Guid.Empty, Currency.EUR);
 
         act.Should().Throw<DomainException>()
             .WithMessage("*AccountId*");
@@ -42,8 +39,8 @@ public class AccountBalanceEntryTests
     [Fact]
     public void Create_ShouldGenerateUniqueIds()
     {
-        var entry1 = AccountBalanceEntry.Create(Guid.NewGuid(), "ACC-1", Currency.USD);
-        var entry2 = AccountBalanceEntry.Create(Guid.NewGuid(), "ACC-2", Currency.USD);
+        var entry1 = AccountBalanceEntry.Create(Guid.NewGuid(), Guid.NewGuid(), Currency.USD);
+        var entry2 = AccountBalanceEntry.Create(Guid.NewGuid(), Guid.NewGuid(), Currency.USD);
 
         entry1.Id.Should().NotBe(entry2.Id);
     }
@@ -51,7 +48,7 @@ public class AccountBalanceEntryTests
     [Fact]
     public void AddBalance_WithPositiveAmount_ShouldIncreaseBalanceAndPayin()
     {
-        var entry = AccountBalanceEntry.Create(Guid.NewGuid(), "ACC-001", Currency.USD);
+        var entry = AccountBalanceEntry.Create(Guid.NewGuid(), Guid.NewGuid(), Currency.USD);
 
         entry.AddBalance(100.50m);
 
@@ -65,7 +62,7 @@ public class AccountBalanceEntryTests
     [Fact]
     public void ApplyCredit_MultipleTimes_ShouldAccumulate()
     {
-        var entry = AccountBalanceEntry.Create(Guid.NewGuid(), "ACC-001", Currency.MXN);
+        var entry = AccountBalanceEntry.Create(Guid.NewGuid(), Guid.NewGuid(), Currency.MXN);
 
         entry.AddBalance(100m);
         entry.AddBalance(250.75m);
@@ -81,7 +78,7 @@ public class AccountBalanceEntryTests
     [InlineData(-100.50)]
     public void ApplyCredit_WithNonPositiveAmount_ShouldThrowDomainException(decimal amount)
     {
-        var entry = AccountBalanceEntry.Create(Guid.NewGuid(), "ACC-001", Currency.USD);
+        var entry = AccountBalanceEntry.Create(Guid.NewGuid(), Guid.NewGuid(), Currency.USD);
 
         var act = () => entry.AddBalance(amount);
 
@@ -92,7 +89,7 @@ public class AccountBalanceEntryTests
     [Fact]
     public void SubtractBalance_WithPositiveAmount_ShouldDecreaseBalanceAndIncreasePayout()
     {
-        var entry = AccountBalanceEntry.Create(Guid.NewGuid(), "ACC-001", Currency.EUR);
+        var entry = AccountBalanceEntry.Create(Guid.NewGuid(), Guid.NewGuid(), Currency.EUR);
         entry.AddBalance(500m);
 
         entry.SubtractBalance(200m);
@@ -105,7 +102,7 @@ public class AccountBalanceEntryTests
     [Fact]
     public void ApplyDebit_AllowsNegativeBalance()
     {
-        var entry = AccountBalanceEntry.Create(Guid.NewGuid(), "ACC-001", Currency.USD);
+        var entry = AccountBalanceEntry.Create(Guid.NewGuid(), Guid.NewGuid(), Currency.USD);
 
         entry.SubtractBalance(100m);
 
@@ -119,7 +116,7 @@ public class AccountBalanceEntryTests
     [InlineData(-50.25)]
     public void ApplyDebit_WithNonPositiveAmount_ShouldThrowDomainException(decimal amount)
     {
-        var entry = AccountBalanceEntry.Create(Guid.NewGuid(), "ACC-001", Currency.USD);
+        var entry = AccountBalanceEntry.Create(Guid.NewGuid(), Guid.NewGuid(), Currency.USD);
 
         var act = () => entry.SubtractBalance(amount);
 
@@ -130,7 +127,7 @@ public class AccountBalanceEntryTests
     [Fact]
     public void ApplyCredit_ThenDebit_ShouldReflectNetBalance()
     {
-        var entry = AccountBalanceEntry.Create(Guid.NewGuid(), "ACC-001", Currency.BRL);
+        var entry = AccountBalanceEntry.Create(Guid.NewGuid(), Guid.NewGuid(), Currency.BRL);
 
         entry.AddBalance(1000m);
         entry.SubtractBalance(350m);
@@ -145,7 +142,7 @@ public class AccountBalanceEntryTests
     [Fact]
     public void AddBalance_ShouldUpdateLastMovementAt()
     {
-        var entry = AccountBalanceEntry.Create(Guid.NewGuid(), "ACC-001", Currency.USD);
+        var entry = AccountBalanceEntry.Create(Guid.NewGuid(), Guid.NewGuid(), Currency.USD);
         entry.LastMovementAt.Should().BeNull();
 
         entry.AddBalance(10m);
@@ -157,7 +154,7 @@ public class AccountBalanceEntryTests
     [Fact]
     public void SubtractBalance_ShouldUpdateLastMovementAt()
     {
-        var entry = AccountBalanceEntry.Create(Guid.NewGuid(), "ACC-001", Currency.USD);
+        var entry = AccountBalanceEntry.Create(Guid.NewGuid(), Guid.NewGuid(), Currency.USD);
         entry.LastMovementAt.Should().BeNull();
 
         entry.SubtractBalance(10m);

@@ -31,7 +31,7 @@ public class MovementTests
         movement.EventType.Should().Be(MovementEventType.TransactionApproved);
         movement.Amount.Should().Be(amount);
         movement.TransactionId.Should().Be("txn-001");
-        movement.AccountId.Should().Be("acc-001");
+        movement.AccountReference.Should().Be("acc-001");
         movement.Country.Should().Be("US");
         movement.PaymentMethod.Should().Be(paymentMethod);
         movement.Merchant.Should().Be(merchant);
@@ -64,7 +64,7 @@ public class MovementTests
             null,
             null);
 
-        movement.AccountId.Should().BeNull();
+        movement.AccountReference.Should().BeNull();
         movement.Country.Should().BeNull();
         movement.PaymentMethod.Should().BeNull();
         movement.Merchant.Should().BeNull();

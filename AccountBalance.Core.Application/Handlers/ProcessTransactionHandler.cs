@@ -21,6 +21,7 @@ public class ProcessTransactionHandler : IProcessTransactionHandler
     private readonly IProcessedEventRepository _processedEventRepository;
     private readonly ICompanyAccountMappingRepository _companyAccountMappingRepository;
     private readonly IUserAccountAssignmentRepository _userAccountAssignmentRepository;
+    private readonly IAccountProvisioningRepository _accountProvisioningRepository;
     private readonly IMongoDbContext _dbContext;
     private readonly ILogger<ProcessTransactionHandler> _logger;
 
@@ -36,6 +37,7 @@ public class ProcessTransactionHandler : IProcessTransactionHandler
         IProcessedEventRepository processedEventRepository,
         ICompanyAccountMappingRepository companyAccountMappingRepository,
         IUserAccountAssignmentRepository userAccountAssignmentRepository,
+        IAccountProvisioningRepository accountProvisioningRepository,
         IMongoDbContext dbContext,
         ILogger<ProcessTransactionHandler> logger)
     {
@@ -44,6 +46,7 @@ public class ProcessTransactionHandler : IProcessTransactionHandler
         _processedEventRepository = processedEventRepository ?? throw new ArgumentNullException(nameof(processedEventRepository));
         _companyAccountMappingRepository = companyAccountMappingRepository ?? throw new ArgumentNullException(nameof(companyAccountMappingRepository));
         _userAccountAssignmentRepository = userAccountAssignmentRepository ?? throw new ArgumentNullException(nameof(userAccountAssignmentRepository));
+        _accountProvisioningRepository = accountProvisioningRepository ?? throw new ArgumentNullException(nameof(accountProvisioningRepository));
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -66,7 +69,7 @@ public class ProcessTransactionHandler : IProcessTransactionHandler
         var currency = payload.Account?.Currency
             ?? throw new InvalidOperationException("Account currency is required.");
 
-        var accountId = payload.Account?.AccountId
+        var accountReference = payload.Account?.AccountId
             ?? throw new InvalidOperationException("Account ID is required.");
 
         var amount = new Amount(
@@ -96,17 +99,26 @@ public class ProcessTransactionHandler : IProcessTransactionHandler
             command.EventType,
             amount,
             payload.TransactionId,
-            accountId,
+            accountReference,
             payload.Country,
             paymentMethod,
             merchant,
             payload.Description);
 
+        var account = await _accountProvisioningRepository.GetByReferenceAsync(
+            command.CompanyId, accountReference, cancellationToken);
+
+        if (account is null)
+        {
+            account = new Account(command.CompanyId, accountReference, accountReference);
+            await _accountProvisioningRepository.AddAsync(account, cancellationToken);
+        }
+
         var direction = MovementClassifier.Classify(command.EventType);
 
         var balance = await _balanceRepository.GetByAccountAsync(
-            command.CompanyId, accountId, amount.Currency, cancellationToken)
-            ?? AccountBalanceEntry.Create(command.CompanyId, accountId, amount.Currency);
+            command.CompanyId, account.Id, amount.Currency, cancellationToken)
+            ?? AccountBalanceEntry.Create(command.CompanyId, account.Id, amount.Currency);
 
         if (direction == MovementDirection.PayIn)
             balance.AddBalance(amount.TotalAmount);
@@ -136,10 +148,10 @@ public class ProcessTransactionHandler : IProcessTransactionHandler
         }
 
         await _companyAccountMappingRepository.UpsertAsync(
-            new CompanyAccountMapping(command.CompanyId, accountId), cancellationToken);
+            new CompanyAccountMapping(command.CompanyId, account.Id), cancellationToken);
 
         await _userAccountAssignmentRepository.AssignAccountToAdminUsersAsync(
-            command.CompanyId, accountId, cancellationToken);
+            command.CompanyId, account.Id, cancellationToken);
     }
 
     private static MovementPayload DeserializePayload(string rawPayload)

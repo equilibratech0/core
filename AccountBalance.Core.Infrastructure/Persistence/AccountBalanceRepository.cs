@@ -23,7 +23,7 @@ public class AccountBalanceRepository : IAccountBalanceRepository
     }
 
     public async Task<AccountBalanceEntry?> GetByAccountAsync(
-        Guid companyId, string accountId, Currency currency, CancellationToken cancellationToken = default)
+        Guid companyId, Guid accountId, Currency currency, CancellationToken cancellationToken = default)
     {
         var filter = Builders<AccountBalanceEntry>.Filter.And(
             Builders<AccountBalanceEntry>.Filter.Eq(b => b.CompanyId, companyId),

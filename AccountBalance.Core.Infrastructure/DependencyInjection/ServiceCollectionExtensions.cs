@@ -22,6 +22,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IProcessedEventRepository, ProcessedEventRepository>();
         services.AddSingleton<ICompanyAccountMappingRepository, CompanyAccountMappingRepository>();
         services.AddSingleton<IUserAccountAssignmentRepository, UserAccountAssignmentRepository>();
+        services.AddSingleton<IAccountProvisioningRepository, AccountProvisioningRepository>();
 
         return services;
     }

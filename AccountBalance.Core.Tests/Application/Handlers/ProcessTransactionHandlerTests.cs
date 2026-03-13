@@ -10,6 +10,7 @@ using AccountBalance.Core.Application.Handlers;
 using AccountBalance.Core.Domain.Aggregates;
 using AccountBalance.Core.Domain.Entities;
 using AccountBalance.Core.Domain.Repositories;
+using global::Shared.Domain.Entities;
 using global::Shared.Domain.Enums;
 using global::Shared.Infrastructure.Persistence.Abstractions;
 
@@ -20,6 +21,7 @@ public class ProcessTransactionHandlerTests
     private readonly Mock<IProcessedEventRepository> _processedEventRepo = new();
     private readonly Mock<ICompanyAccountMappingRepository> _mappingRepo = new();
     private readonly Mock<IUserAccountAssignmentRepository> _userAccountAssignmentRepo = new();
+    private readonly Mock<IAccountProvisioningRepository> _accountProvisioningRepo = new();
     private readonly Mock<IMongoDbContext> _dbContext = new();
     private readonly Mock<ILogger<ProcessTransactionHandler>> _logger = new();
 
@@ -29,6 +31,7 @@ public class ProcessTransactionHandlerTests
         _processedEventRepo.Object,
         _mappingRepo.Object,
         _userAccountAssignmentRepo.Object,
+        _accountProvisioningRepo.Object,
         _dbContext.Object,
         _logger.Object);
 
@@ -91,8 +94,10 @@ public class ProcessTransactionHandlerTests
 
         _processedEventRepo.Setup(r => r.ExistsAsync(command.TransactionId, command.EventType, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
+        _accountProvisioningRepo.Setup(r => r.GetByReferenceAsync(command.CompanyId, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Account(command.CompanyId, "acc-001", "acc-001"));
         _balanceRepo.Setup(r => r.GetByAccountAsync(
-                command.CompanyId, "acc-001", Currency.USD, It.IsAny<CancellationToken>()))
+                command.CompanyId, It.IsAny<Guid>(), Currency.USD, It.IsAny<CancellationToken>()))
             .ReturnsAsync((AccountBalanceEntry?)null);
 
         var handler = CreateHandler();
@@ -106,7 +111,7 @@ public class ProcessTransactionHandlerTests
             It.IsAny<CancellationToken>()), Times.Once);
 
         _movementRepo.Verify(r => r.AddAsync(It.IsAny<global::Shared.Domain.Entities.Movement>(), It.IsAny<CancellationToken>()), Times.Once);
-        _mappingRepo.Verify(r => r.UpsertAsync(It.Is<CompanyAccountMapping>(m => m.CompanyId == command.CompanyId && m.AccountId == "acc-001"), It.IsAny<CancellationToken>()), Times.Once);
+        _mappingRepo.Verify(r => r.UpsertAsync(It.Is<CompanyAccountMapping>(m => m.CompanyId == command.CompanyId), It.IsAny<CancellationToken>()), Times.Once);
         _processedEventRepo.Verify(r => r.AddAsync(It.IsAny<ProcessedEvent>(), It.IsAny<CancellationToken>()), Times.Once);
         _dbContext.Verify(c => c.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -119,13 +124,16 @@ public class ProcessTransactionHandlerTests
     public async Task HandleAsync_PayOutWithExistingBalance_ShouldUpdateBalanceWithDebit()
     {
         var command = CreateCommand(MovementEventType.PayoutFinished);
-        var existingBalance = AccountBalanceEntry.Create(command.CompanyId, "acc-001", Currency.USD);
+        var accountId = Guid.NewGuid();
+        var existingBalance = AccountBalanceEntry.Create(command.CompanyId, accountId, Currency.USD);
         existingBalance.AddBalance(500m);
 
         _processedEventRepo.Setup(r => r.ExistsAsync(command.TransactionId, command.EventType, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
+        _accountProvisioningRepo.Setup(r => r.GetByReferenceAsync(command.CompanyId, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Account(command.CompanyId, "acc-001", "acc-001"));
         _balanceRepo.Setup(r => r.GetByAccountAsync(
-                command.CompanyId, "acc-001", Currency.USD, It.IsAny<CancellationToken>()))
+                command.CompanyId, It.IsAny<Guid>(), Currency.USD, It.IsAny<CancellationToken>()))
             .ReturnsAsync(existingBalance);
 
         var handler = CreateHandler();
@@ -147,8 +155,10 @@ public class ProcessTransactionHandlerTests
 
         _processedEventRepo.Setup(r => r.ExistsAsync(command.TransactionId, command.EventType, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
+        _accountProvisioningRepo.Setup(r => r.GetByReferenceAsync(command.CompanyId, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Account(command.CompanyId, "acc-001", "acc-001"));
         _balanceRepo.Setup(r => r.GetByAccountAsync(
-                command.CompanyId, "acc-001", Currency.USD, It.IsAny<CancellationToken>()))
+                command.CompanyId, It.IsAny<Guid>(), Currency.USD, It.IsAny<CancellationToken>()))
             .ReturnsAsync((AccountBalanceEntry?)null);
 
         var handler = CreateHandler();
@@ -156,8 +166,7 @@ public class ProcessTransactionHandlerTests
 
         _mappingRepo.Verify(r => r.UpsertAsync(
             It.Is<CompanyAccountMapping>(m =>
-                m.CompanyId == command.CompanyId &&
-                m.AccountId == "acc-001"),
+                m.CompanyId == command.CompanyId),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -228,8 +237,10 @@ public class ProcessTransactionHandlerTests
 
         _processedEventRepo.Setup(r => r.ExistsAsync(command.TransactionId, command.EventType, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
+        _accountProvisioningRepo.Setup(r => r.GetByReferenceAsync(command.CompanyId, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Account(command.CompanyId, "acc-001", "acc-001"));
         _balanceRepo.Setup(r => r.GetByAccountAsync(
-                command.CompanyId, "acc-001", Currency.USD, It.IsAny<CancellationToken>()))
+                command.CompanyId, It.IsAny<Guid>(), Currency.USD, It.IsAny<CancellationToken>()))
             .ReturnsAsync((AccountBalanceEntry?)null);
         _movementRepo.Setup(r => r.AddAsync(It.IsAny<global::Shared.Domain.Entities.Movement>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("DB failure"));
@@ -286,8 +297,10 @@ public class ProcessTransactionHandlerTests
 
         _processedEventRepo.Setup(r => r.ExistsAsync(command.TransactionId, command.EventType, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
+        _accountProvisioningRepo.Setup(r => r.GetByReferenceAsync(command.CompanyId, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Account(command.CompanyId, "acc-full", "acc-full"));
         _balanceRepo.Setup(r => r.GetByAccountAsync(
-                command.CompanyId, "acc-full", Currency.EUR, It.IsAny<CancellationToken>()))
+                command.CompanyId, It.IsAny<Guid>(), Currency.EUR, It.IsAny<CancellationToken>()))
             .ReturnsAsync((AccountBalanceEntry?)null);
 
         var handler = CreateHandler();
@@ -311,7 +324,7 @@ public class ProcessTransactionHandlerTests
     {
         var act = () => new ProcessTransactionHandler(
             null!, _balanceRepo.Object, _processedEventRepo.Object,
-            _mappingRepo.Object, _userAccountAssignmentRepo.Object, _dbContext.Object, _logger.Object);
+            _mappingRepo.Object, _userAccountAssignmentRepo.Object, _accountProvisioningRepo.Object, _dbContext.Object, _logger.Object);
 
         act.Should().Throw<ArgumentNullException>().WithParameterName("movementRepository");
     }
@@ -321,7 +334,7 @@ public class ProcessTransactionHandlerTests
     {
         var act = () => new ProcessTransactionHandler(
             _movementRepo.Object, null!, _processedEventRepo.Object,
-            _mappingRepo.Object, _userAccountAssignmentRepo.Object, _dbContext.Object, _logger.Object);
+            _mappingRepo.Object, _userAccountAssignmentRepo.Object, _accountProvisioningRepo.Object, _dbContext.Object, _logger.Object);
 
         act.Should().Throw<ArgumentNullException>().WithParameterName("balanceRepository");
     }
@@ -331,7 +344,7 @@ public class ProcessTransactionHandlerTests
     {
         var act = () => new ProcessTransactionHandler(
             _movementRepo.Object, _balanceRepo.Object, null!,
-            _mappingRepo.Object, _userAccountAssignmentRepo.Object, _dbContext.Object, _logger.Object);
+            _mappingRepo.Object, _userAccountAssignmentRepo.Object, _accountProvisioningRepo.Object, _dbContext.Object, _logger.Object);
 
         act.Should().Throw<ArgumentNullException>().WithParameterName("processedEventRepository");
     }
@@ -341,9 +354,19 @@ public class ProcessTransactionHandlerTests
     {
         var act = () => new ProcessTransactionHandler(
             _movementRepo.Object, _balanceRepo.Object, _processedEventRepo.Object,
-            null!, _userAccountAssignmentRepo.Object, _dbContext.Object, _logger.Object);
+            null!, _userAccountAssignmentRepo.Object, _accountProvisioningRepo.Object, _dbContext.Object, _logger.Object);
 
         act.Should().Throw<ArgumentNullException>().WithParameterName("companyAccountMappingRepository");
+    }
+
+    [Fact]
+    public void Constructor_NullAccountProvisioningRepository_ShouldThrow()
+    {
+        var act = () => new ProcessTransactionHandler(
+            _movementRepo.Object, _balanceRepo.Object, _processedEventRepo.Object,
+            _mappingRepo.Object, _userAccountAssignmentRepo.Object, null!, _dbContext.Object, _logger.Object);
+
+        act.Should().Throw<ArgumentNullException>().WithParameterName("accountProvisioningRepository");
     }
 
     [Fact]
@@ -351,7 +374,7 @@ public class ProcessTransactionHandlerTests
     {
         var act = () => new ProcessTransactionHandler(
             _movementRepo.Object, _balanceRepo.Object, _processedEventRepo.Object,
-            _mappingRepo.Object, _userAccountAssignmentRepo.Object, null!, _logger.Object);
+            _mappingRepo.Object, _userAccountAssignmentRepo.Object, _accountProvisioningRepo.Object, null!, _logger.Object);
 
         act.Should().Throw<ArgumentNullException>().WithParameterName("dbContext");
     }
@@ -361,7 +384,7 @@ public class ProcessTransactionHandlerTests
     {
         var act = () => new ProcessTransactionHandler(
             _movementRepo.Object, _balanceRepo.Object, _processedEventRepo.Object,
-            _mappingRepo.Object, _userAccountAssignmentRepo.Object, _dbContext.Object, null!);
+            _mappingRepo.Object, _userAccountAssignmentRepo.Object, _accountProvisioningRepo.Object, _dbContext.Object, null!);
 
         act.Should().Throw<ArgumentNullException>().WithParameterName("logger");
     }
@@ -378,8 +401,10 @@ public class ProcessTransactionHandlerTests
 
         _processedEventRepo.Setup(r => r.ExistsAsync(command.TransactionId, command.EventType, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
+        _accountProvisioningRepo.Setup(r => r.GetByReferenceAsync(command.CompanyId, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Account(command.CompanyId, "acc-001", "acc-001"));
         _balanceRepo.Setup(r => r.GetByAccountAsync(
-                command.CompanyId, "acc-001", Currency.USD, It.IsAny<CancellationToken>()))
+                command.CompanyId, It.IsAny<Guid>(), Currency.USD, It.IsAny<CancellationToken>()))
             .ReturnsAsync((AccountBalanceEntry?)null);
 
         _dbContext.Setup(c => c.BeginTransactionAsync(It.IsAny<CancellationToken>()))

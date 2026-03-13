@@ -8,7 +8,7 @@ using AccountBalance.Core.Domain.ValueObjects;
 public class AccountBalanceEntry : AggregateRoot<AccountBalanceId>
 {
     public Guid CompanyId { get; private set; }
-    public string AccountId { get; private set; } = null!;
+    public Guid AccountId { get; private set; }
     public Currency Currency { get; private set; }
     public decimal AvailableBalance { get; private set; }
     public decimal TotalPayins { get; private set; }
@@ -19,7 +19,7 @@ public class AccountBalanceEntry : AggregateRoot<AccountBalanceId>
 
     protected AccountBalanceEntry() { }
 
-    private AccountBalanceEntry(AccountBalanceId id, Guid companyId, string accountId, Currency currency)
+    private AccountBalanceEntry(AccountBalanceId id, Guid companyId, Guid accountId, Currency currency)
     {
         Id = id;
         CompanyId = companyId;
@@ -32,10 +32,10 @@ public class AccountBalanceEntry : AggregateRoot<AccountBalanceId>
         UpdatedAt = DateTimeOffset.UtcNow;
     }
 
-    public static AccountBalanceEntry Create(Guid companyId, string accountId, Currency currency)
+    public static AccountBalanceEntry Create(Guid companyId, Guid accountId, Currency currency)
     {
-        if (string.IsNullOrWhiteSpace(accountId))
-            throw new DomainException("AccountId cannot be null or empty.");
+        if (accountId == Guid.Empty)
+            throw new DomainException("AccountId cannot be empty.");
 
         return new AccountBalanceEntry(AccountBalanceId.New(), companyId, accountId, currency);
     }

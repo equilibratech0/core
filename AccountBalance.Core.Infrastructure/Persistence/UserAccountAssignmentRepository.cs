@@ -20,7 +20,7 @@ public class UserAccountAssignmentRepository : IUserAccountAssignmentRepository
         _logger = logger;
     }
 
-    public async Task AssignAccountToAdminUsersAsync(Guid companyId, string accountId, CancellationToken cancellationToken = default)
+    public async Task AssignAccountToAdminUsersAsync(Guid companyId, Guid accountId, CancellationToken cancellationToken = default)
     {
         var adminFilter = Builders<User>.Filter.And(
             Builders<User>.Filter.Eq(u => u.CompanyId, companyId),
