@@ -23,7 +23,7 @@ public class AmountPayload
 
 public class AccountPayload
 {
-    public string? AccountId { get; set; }
+    public string? AccountReference { get; set; }
     public Currency? Currency { get; set; }
 }
 

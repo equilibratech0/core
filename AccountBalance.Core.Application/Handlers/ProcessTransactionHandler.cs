@@ -69,8 +69,8 @@ public class ProcessTransactionHandler : IProcessTransactionHandler
         var currency = payload.Account?.Currency
             ?? throw new InvalidOperationException("Account currency is required.");
 
-        var accountReference = payload.Account?.AccountId
-            ?? throw new InvalidOperationException("Account ID is required.");
+        var accountReference = payload.Account?.AccountReference
+            ?? throw new InvalidOperationException("Account reference is required.");
 
         var amount = new Amount(
             payload.Amount.TotalAmount,
